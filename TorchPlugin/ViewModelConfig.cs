@@ -12,13 +12,13 @@ namespace CleanSpace
     public class ViewModelConfig : ViewModel, IPluginConfig
     {
 
-        private double tokenValidTimeMs = 2500;
+        private long tokenValidTimeTicks = 2500;
         private bool enabled = true;
         private bool detectCodeChanges = true;
 
         private string secret = "secret";
                
-        public double TokenValidTime { get => tokenValidTimeMs; set => SetValue(ref tokenValidTimeMs, value); }
+        public long TokenValidTimeTicks { get => tokenValidTimeTicks; set => SetValue(ref tokenValidTimeTicks, value); }
 
         [Display(Order = 1, GroupName = "General", Name = "Enable plugin", Description = "Enable the plugin")]
         public bool Enabled

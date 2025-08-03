@@ -32,7 +32,7 @@ namespace Shared.Config
             propertyChanged(this, new PropertyChangedEventArgs(propName));
         }
 
-        private double tokenValidTime;
+        private long tokenValidTime;
         private bool enabled = true;
         private bool detectCodeChanges = true;
         private string secret = null;
@@ -59,9 +59,9 @@ namespace Shared.Config
             set => SetValue(ref secret, value);
         }
 
-        public double TokenValidTime 
+        public long TokenValidTimeTicks
         { 
-            get => TokenValidTime; 
+            get => tokenValidTime; 
             set => SetValue(ref tokenValidTime, value); 
         }
 

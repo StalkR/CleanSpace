@@ -1,6 +1,5 @@
 namespace Shared.Struct
 {
-
     public enum ListMatchAction
     {
         None = 0,

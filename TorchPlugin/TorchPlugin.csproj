@@ -495,10 +495,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConfigView.xaml.cs" />
-    <Compile Include="Util\TimeHashUtility.cs" />
+    <Compile Include="Util\TokenUtility.cs" />
     <Compile Include="Patch\OnConnectedClientPatch.cs" />
     <Compile Include="ValidationManager.cs" />
-    <Compile Include="TorchDetectorPlugin.cs" />
+    <Compile Include="CleanSpaceTorchPlugin.cs" />
     <Compile Include="ViewModelConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Commands.cs" />

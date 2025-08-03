@@ -25,8 +25,8 @@ namespace CleanSpace
         {
             Instance = this;
             InitializeComponent();
-            DataContext = TorchDetectorPlugin.Instance.Config;
-            PluginHashGrid.ItemsSource = TorchDetectorPlugin.Instance.Config.AnalyzedPlugins;            
+            DataContext = CleanSpaceTorchPlugin.Instance.Config;
+            PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;            
         }
 
         private void PluginDropArea_DragOver(object sender, DragEventArgs e)
@@ -69,7 +69,7 @@ namespace CleanSpace
                     Name = name
                 };
                 Log?.Info("Added: " + newEntry.ToString());
-                TorchDetectorPlugin.Instance.Config.AnalyzedPlugins.Add(newEntry);         
+                CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins.Add(newEntry);         
                
                 return true;
             }

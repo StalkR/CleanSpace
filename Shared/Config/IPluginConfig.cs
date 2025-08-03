@@ -11,7 +11,7 @@ namespace Shared.Config
         bool Enabled { get; set; }
         bool DetectCodeChanges { get; set; }
         string Secret { get; set; }
-        double TokenValidTime { get; set; }
+        long TokenValidTimeTicks { get; set; }
 
 
     // Server Plugin

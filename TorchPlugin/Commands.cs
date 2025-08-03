@@ -33,8 +33,8 @@ namespace CleanSpace
 
         private void RespondWithInfo()
         {
-            var config = TorchDetectorPlugin.Instance.Config;
-            Respond($"{TorchDetectorPlugin.PluginName} plugin is enabled: {Format(config.Enabled)}");
+            var config = CleanSpaceTorchPlugin.Instance.Config;
+            Respond($"{CleanSpaceTorchPlugin.PluginName} plugin is enabled: {Format(config.Enabled)}");
             // TODO: Respond with your plugin settings
             // For example:
             //Respond($"custom_setting: {Format(config.CustomSetting)}");

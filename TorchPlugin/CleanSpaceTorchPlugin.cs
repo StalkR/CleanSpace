@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using CleanSpaceShared.Networking;
 using HarmonyLib;
 using NLog.LayoutRenderers;
+using Sandbox.Engine.Multiplayer;
 using Sandbox.Game;
 using Shared.Config;
 using Shared.Logging;
@@ -20,6 +21,7 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
+using VRage.Network;
 using VRage.Utils;
 
 namespace CleanSpace
@@ -57,14 +59,13 @@ namespace CleanSpace
         {
             base.Init(torch);
             ConfigView.Log = Log;
-
+            ValidationManager.Log = Log;
 #if DEBUG
             // Allow the debugger some time to connect once the plugin assembly is loaded
             Thread.Sleep(100);
 #endif
-
+            
             Instance = this;
-
             Log.Info("Init");
 
             var configPath = Path.Combine(StoragePath, ConfigFileName);
@@ -113,6 +114,20 @@ namespace CleanSpace
                     break;
             }
         }
+
+        public static void RejectConnection(ulong steamId, string reason)
+        {
+            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Player {steamId} was rejected by clean space: {reason}");
+
+            var server = MyMultiplayer.Static as MyDedicatedServerBase;
+            var sendJoinResult = AccessTools.Method(server.GetType(), "SendJoinResult");
+            sendJoinResult?.Invoke(server, new object[] { steamId, JoinResult.TicketCanceled, 0UL });
+
+
+
+            // Optional: also kick player here depending on server API
+        }
+
 
         private void RegisterPacketActions()
         {

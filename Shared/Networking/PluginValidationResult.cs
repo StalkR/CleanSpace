@@ -17,6 +17,8 @@ namespace CleanSpaceShared.Networking
         [ProtoMember(2)]
         public string Message;
 
+        [ProtoMember(3)]
+        public List<string> PluginList;
     }
 
 }

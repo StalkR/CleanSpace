@@ -1,31 +1,113 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.ComponentModel;
 
 namespace Shared.Struct
 {
     [Serializable]
-    public struct PluginListEntry
+    public class PluginListEntry : INotifyPropertyChanged
     {
-        public bool IsSelected { get; set; }
-        public string Name { get; set; }
-        public string AssemblyName { get; set; }
-        public string Version { get; set; }
-        public string Hash { get; set; }
-        public DateTime LastHashed { get; set; }
+        private bool _isSelected;
+        private string _name;
+        private string _assemblyName;
+        private string _version;
+        private string _hash;
+        private DateTime _lastHashed;
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged(nameof(IsSelected));
+                }
+            }
+        }
+
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                if (_name != value)
+                {
+                    _name = value;
+                    OnPropertyChanged(nameof(Name));
+                }
+            }
+        }
+
+        public string AssemblyName
+        {
+            get => _assemblyName;
+            set
+            {
+                if (_assemblyName != value)
+                {
+                    _assemblyName = value;
+                    OnPropertyChanged(nameof(AssemblyName));
+                }
+            }
+        }
+
+        public string Version
+        {
+            get => _version;
+            set
+            {
+                if (_version != value)
+                {
+                    _version = value;
+                    OnPropertyChanged(nameof(Version));
+                }
+            }
+        }
+
+        public string Hash
+        {
+            get => _hash;
+            set
+            {
+                if (_hash != value)
+                {
+                    _hash = value;
+                    OnPropertyChanged(nameof(Hash));
+                }
+            }
+        }
+
+        public DateTime LastHashed
+        {
+            get => _lastHashed;
+            set
+            {
+                if (_lastHashed != value)
+                {
+                    _lastHashed = value;
+                    OnPropertyChanged(nameof(LastHashed));
+                }
+            }
+        }
 
         public override bool Equals(object obj)
         {
-            if (!(obj is PluginListEntry))
+            if (!(obj is PluginListEntry other))
                 return false;
 
-            PluginListEntry mys = (PluginListEntry)obj;
-            return (Hash == mys.Hash);
+            return Hash == other.Hash &&
+                   Version == other.Version &&
+                   AssemblyName == other.AssemblyName;
         }
 
         public override int GetHashCode()
         {
-            return Hash.GetHashCode();
+            return Hash?.GetHashCode() ?? 0;
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

@@ -50,10 +50,9 @@ namespace CleanSpace.Patch
                 return true;
             }
 
-            MyLog.Default.WriteLineAndConsole($"{TorchDetectorPlugin.PluginName}: Initiating clean space request for player {steamId} .");
-            string nonce = TimeHashUtility.GenerateToken(steamId.ToString()+"|"+TimeHashUtility.SharedSecret, TimeSpan.FromMilliseconds(TorchDetectorPlugin.Instance.Config.TokenValidTime));
-            ValidationManager.RegisterNonceForPlayer(steamId, nonce);
-            pending.Add(steamId);
+            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId} .");        
+            ValidationManager.RegisterNonceForPlayer(steamId);
+         
 
             var message = new PluginValidationRequest
             {
@@ -61,7 +60,7 @@ namespace CleanSpace.Patch
                 TargetType = MessageTarget.Client,
                 Target = steamId,
                 UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = nonce
+                Nonce = ValidationManager.GetNonceForPlayer(steamId)
             };
             
             PacketRegistry.Send(message, new EndpointId(steamId), MyP2PMessageEnum.Reliable);             
