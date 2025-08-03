@@ -35,10 +35,10 @@ namespace CleanSpaceShared
 
    
     // ReSharper disable once UnusedType.Global
-    public class DetectorPlugin : IPlugin, ICommonPlugin
+    public class CleanSpaceClientPlugin : IPlugin, ICommonPlugin
     {
         public const string Name = "Clean Space";
-        public static DetectorPlugin Instance { get; private set; }
+        public static CleanSpaceClientPlugin Instance { get; private set; }
         private SettingsGenerator settingsGenerator;
         public long Tick { get; private set; }
         private static bool failed;
@@ -59,7 +59,6 @@ namespace CleanSpaceShared
         {
 
             detectedPluginAssemblies = new List<Assembly> { };
-
 #if DEBUG
             // Allow the debugger some time to connect once the plugin assembly is loaded
             Thread.Sleep(100);
@@ -105,8 +104,13 @@ namespace CleanSpaceShared
         private void SetPacketActions()
         {
             PluginValidationRequest.ProcessClientAction += PluginValidationRequest_ProcessAction;
+            PluginValidationRequest.ProcessClientAction += LogMessage;
         }
 
+        private void LogMessage(MessageBase obj)
+        {
+
+        }
         private void PluginValidationRequest_ProcessAction(MessageBase obj)
         {
             PluginValidationRequest r = (PluginValidationRequest)obj;
@@ -117,15 +121,12 @@ namespace CleanSpaceShared
                 Log.Error($"{Name}: Received a validation request from the server, but the server did not provide a token!");
                 return;
             }
+            string myHash = AssemblyScanner.GetAssemblyFingerprint(AssemblyScanner.GetOwnAssembly());
             List<Assembly> pluginList = AssemblyScanner.GetPluginAssemblies();           
             List<String> pluginHashList = new List<String>();
-
-            foreach (var assembly in pluginList)
-            {
-                pluginHashList.Add(SigScanner.getCompleteAssemblyHash(assembly));
-            }
-
-            var steamId = MyMultiplayer.Static.GetOwner();
+            pluginList.ForEach((assm) => pluginHashList.Add(AssemblyScanner.GetAssemblyFingerprint(assm)));
+            
+            var steamId = MyMultiplayer.Static.GetOwner();            
             var message = new PluginValidationResponse
             {
                 SenderId = steamId,
@@ -133,7 +134,8 @@ namespace CleanSpaceShared
                 Target = obj.SenderId,
                 UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Nonce = token,
-                PluginHashes = pluginHashList
+                PluginHashes = pluginHashList,
+                CleanSpaceHash = myHash
             };
 
             PacketRegistry.Send(message, new EndpointId(steamId), MyP2PMessageEnum.Reliable);
@@ -215,8 +217,8 @@ namespace CleanSpaceShared
         internal void SendPluginValidationResponse(string nonce)
         {
             List<string> hashes = new List<string>();
-            detectedPluginAssemblies.ForEach((a) => hashes.Add(SigScanner.getCompleteAssemblyHash(a)));
-            Log.Info($"{DetectorPlugin.Name}: Responding to request for plugin list");
+            detectedPluginAssemblies.ForEach((a) => hashes.Add(AssemblyScanner.GetAssemblyFingerprint(a)));
+            Log.Info($"{Name}: Responding to request for plugin list");
             //Communication.SendMessageToServer(new PluginValidationResponse() { Nonce = nonce, PluginHashes = hashes });
             
         }

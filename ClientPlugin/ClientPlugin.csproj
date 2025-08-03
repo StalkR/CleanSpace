@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ClientPlugin</RootNamespace>
-    <AssemblyName>PluginDetector</AssemblyName>
+    <AssemblyName>CleanSpace</AssemblyName>
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <LangVersion>7.3</LangVersion>
@@ -645,7 +645,7 @@
     <Compile Include="Settings\Tools\Binding.cs" />
     <Compile Include="Settings\Tools\Tools.cs" />
     <Compile Include="Config.cs" />
-    <Compile Include="DetectorPlugin.cs" />
+    <Compile Include="CleanSpaceClientPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

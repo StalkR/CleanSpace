@@ -8,7 +8,7 @@ namespace CleanSpaceShared.Settings
 {
     public static class ConfigStorage
     {
-        private static readonly string ConfigFileName = string.Concat(DetectorPlugin.Name, ".cfg");
+        private static readonly string ConfigFileName = string.Concat(CleanSpaceClientPlugin.Name, ".cfg");
         private static string ConfigFilePath => Path.Combine(MyFileSystem.UserDataPath, "Storage", ConfigFileName);
 
         public static void Save(Config config)

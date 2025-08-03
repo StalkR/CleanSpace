@@ -11,7 +11,8 @@ namespace Shared.Struct
         EXPIRED_TOKEN = -2,
         UNEXPECTED_TOKEN = -3,
         MALFORMED_TOKEN = -4,
-        REJECTED_MATCH = -5,        
+        REJECTED_MATCH = -5,   
+        REJECTED_CLEANSPACE_HASH = -6
     }
     public struct ValidationResultData
     {

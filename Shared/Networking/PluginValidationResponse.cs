@@ -9,7 +9,9 @@ namespace CleanSpaceShared.Networking
     public class PluginValidationResponse : MessageBase
     {
         [ProtoMember(2)]
-        public List<string> PluginHashes; // SHA-256 or similar of loaded plugin assemblies
+        public List<string> PluginHashes;
+        [ProtoMember(3)]
+        public string CleanSpaceHash;
     }
 
 }

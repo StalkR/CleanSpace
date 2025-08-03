@@ -4,11 +4,13 @@ using Shared.Plugin;
 using Shared.Struct;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using VRage.Compression;
@@ -57,7 +59,7 @@ namespace CleanSpace
             if (AssemblyScanner.IsValidPlugin(file))
             {
                 Assembly a = AssemblyScanner.GetAssembly(file);
-                String assemblyHash = SigScanner.getCompleteAssemblyHash(a);
+                String assemblyHash = AssemblyScanner.GetAssemblyFingerprint(a);
                 String version = a.GetName().Version.ToString();
                 String name = a.GetName().Name;
                 PluginListEntry newEntry = new PluginListEntry()
@@ -69,8 +71,10 @@ namespace CleanSpace
                     Name = name
                 };
                 Log?.Info("Added: " + newEntry.ToString());
-                CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins.Add(newEntry);         
-               
+                var original = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
+                var newList = new ObservableCollection<PluginListEntry>(original) { newEntry };
+                CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins = newList;
+                Instance.PluginHashGrid.ItemsSource = newList;
                 return true;
             }
             else

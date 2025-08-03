@@ -5,9 +5,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using VRage.Plugins;
 
 namespace CleanSpaceShared.Scanner
@@ -17,31 +16,15 @@ namespace CleanSpaceShared.Scanner
         public static IPluginLogger Logger;
         public static bool IsUnsigned(Assembly a) => a.GetName().GetPublicKeyToken()?.Length == 0;
 
-        public static bool HasRandomizedSuffix(string name) {
-            return Regex.IsMatch(name, @"_[a-z0-9]{8}\.[a-z0-9]{3}$", RegexOptions.IgnoreCase);
-        }
-
-        public static bool HasNullCompanyAttribute(Assembly a)
-        {
-            string company = a.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company ?? "";
-            return string.IsNullOrEmpty(company);
-        }
-
         public static List<Assembly> GetPluginAssemblies()
         {
             List<Assembly> assemblies = new List<Assembly>();
-            var assms = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var assm in assms)
-            {
-              if(HasNullCompanyAttribute(assm) && HasRandomizedSuffix(assm.GetName().Name)){
-                    assemblies.Add(assm);
-                }
-            }
-            return assemblies;
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where((asm)=> IsValidPlugin(asm)).ToList();
         }
+
         public static Assembly GetAssembly(string path)
         {
-
             if (File.Exists(path))
             {
                 Assembly a = Assembly.LoadFile(path);               
@@ -49,24 +32,90 @@ namespace CleanSpaceShared.Scanner
             }
             return null;
         }
+
+        public static Assembly GetOwnAssembly() => Assembly.GetExecutingAssembly();
+
+        public static bool IsValidPlugin(Assembly assembly)
+        {
+            if (assembly.FullName.Contains("Sandbox.Game, Version")) return false;
+            Type[] types;
+                        
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                types = ex.Types.Where(t => t != null).ToArray();
+                                                                 
+            }
+            catch
+            {             
+                return false;
+            }
+            return types.Any(t => typeof(IPlugin).IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
+        }
         public static bool IsValidPlugin(string dllPath)
         {
             if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath))
                 return false;
 
             try
-            {                
-                Assembly assembly = Assembly.LoadFile(dllPath);
-                Type pluginType = assembly
-                    .GetTypes()
-                    .FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsAbstract && t.IsClass);
-                return pluginType != null;
+            {
+                var assembly = Assembly.LoadFile(dllPath);
+                return IsValidPlugin(assembly);
+            }
+            catch (BadImageFormatException)
+            {
+                return false;
+            }
+            catch (FileLoadException)
+            {
+                return false;
             }
             catch (Exception ex)
-            {               
-                Console.WriteLine($"Failed to load plugin from {dllPath}: {ex.Message}");
+            {
+                Logger.Error($" Failed to load {dllPath}: {ex.GetType().Name} - {ex.Message}");
                 return false;
             }
         }
+
+        public static bool ValidateAssemblyIntegrity(Assembly a, string[] allowedHashes) => allowedHashes.Contains(GetAssemblyFingerprint(a));
+
+        public static string GetAssemblyFingerprint(Assembly assembly)
+        {
+            var sb = new StringBuilder();
+            var name = assembly.GetName();
+            sb.AppendLine(name.Name);
+            sb.AppendLine(name.Version.ToString());
+            sb.AppendLine(BitConverter.ToString(name.GetPublicKeyToken() ?? new byte[0]));
+
+            var types = assembly.GetTypes().OrderBy(t => t.FullName);
+            foreach (var type in types)
+            {
+                sb.AppendLine(type.FullName);
+                sb.AppendLine(type.Attributes.ToString());
+                foreach (var field in type.GetFields().OrderBy(f => f.Name))
+                    sb.AppendLine($"{field.Name}:{field.FieldType}");
+
+                foreach (var method in type.GetMethods().OrderBy(m => m.Name))
+                {
+                    sb.AppendLine(method.ToString());
+                    var body = method.GetMethodBody();
+                    if (body != null)
+                    {
+                        var il = body.GetILAsByteArray();
+                        if (il != null)
+                            sb.AppendLine(BitConverter.ToString(il));
+                    }
+                }
+            }
+
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
+                return Convert.ToBase64String(hash);
+            }
+        }        
     }
 }
