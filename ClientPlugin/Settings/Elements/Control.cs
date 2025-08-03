@@ -2,7 +2,7 @@ using Sandbox.Graphics.GUI;
 using VRage.Utils;
 using VRageMath;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     internal class Control
     {

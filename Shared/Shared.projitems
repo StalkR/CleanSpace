@@ -15,6 +15,21 @@
     <Compile Include="$(MSBuildThisFileDirectory)Logging\IPluginLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logging\LogFormatter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logging\PluginLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\IProtoPacketData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)networking\MessageFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)networking\NetworkEnvelope.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\ProtoPacketData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scanner\AssemblyScanner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scanner\SigScanner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)struct\ListMatchAction.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Struct\PluginListEntry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)struct\PluginListType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Util\CompressionUtil.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\MessageBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\PacketRegistry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResponse.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Patches\ExamplePatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Patches\ExampleServerPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Patches\ExampleTranspilerPatch.cs" />
@@ -36,5 +51,8 @@
     </Content>
     <Content Include="$(MSBuildThisFileDirectory)Patches\LoadData.original.il" />
     <Content Include="$(MSBuildThisFileDirectory)Patches\LoadData.patched.il" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Util\" />
   </ItemGroup>
 </Project>

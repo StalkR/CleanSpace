@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     internal interface IElement
     {

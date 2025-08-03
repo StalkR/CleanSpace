@@ -1,5 +1,5 @@
-﻿using ClientPlugin.Settings.Elements;
-using ClientPlugin.Settings.Layouts;
+﻿using CleanSpaceShared.Settings.Elements;
+using CleanSpaceShared.Settings.Layouts;
 using Sandbox.Graphics.GUI;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 
 
-namespace ClientPlugin.Settings
+namespace CleanSpaceShared.Settings
 {
     internal class AttributeInfo
     {

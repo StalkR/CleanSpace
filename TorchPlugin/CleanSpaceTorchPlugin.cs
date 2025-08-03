@@ -5,12 +5,15 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Windows.Controls;
+using CleanSpaceShared.Networking;
 using HarmonyLib;
+using NLog.LayoutRenderers;
 using Sandbox.Game;
 using Shared.Config;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
+
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -19,13 +22,14 @@ using Torch.API.Session;
 using Torch.Session;
 using VRage.Utils;
 
-namespace TorchPlugin
+namespace CleanSpace
 {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public class Plugin : TorchPluginBase, IWpfPlugin, ICommonPlugin
+    public class CleanSpaceTorchPlugin : TorchPluginBase, IWpfPlugin, ICommonPlugin
     {
-        public const string PluginName = "PluginTemplate";
-        public static Plugin Instance { get; private set; }
+
+        public const string PluginName = "Clean Space";
+        public static CleanSpaceTorchPlugin Instance { get; private set; }
 
         public long Tick { get; private set; }
 
@@ -33,7 +37,7 @@ namespace TorchPlugin
         private static readonly IPluginLogger Logger = new PluginLogger(PluginName);
 
         public IPluginConfig Config => config?.Data;
-        private PersistentConfig<PluginConfig> config;
+        private PersistentConfig<ViewModelConfig> config;
         private static readonly string ConfigFileName = $"{PluginName}.cfg";
 
         // ReSharper disable once UnusedMember.Global
@@ -52,6 +56,7 @@ namespace TorchPlugin
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
+            ConfigView.Log = Log;
 
 #if DEBUG
             // Allow the debugger some time to connect once the plugin assembly is loaded
@@ -63,23 +68,27 @@ namespace TorchPlugin
             Log.Info("Init");
 
             var configPath = Path.Combine(StoragePath, ConfigFileName);
-            config = PersistentConfig<PluginConfig>.Load(Log, configPath);
-
+            config = PersistentConfig<ViewModelConfig>.Load(Log, configPath);
+            
             var gameVersionNumber = MyPerGameSettings.BasicGameInfo.GameVersion ?? 0;
             var gameVersion = new StringBuilder(MyBuildNumbers.ConvertBuildNumberFromIntToString(gameVersionNumber)).ToString();
             Common.SetPlugin(this, gameVersion, StoragePath);
 
-#if USE_HARMONY
-            if (!PatchHelpers.HarmonyPatchAll(Log, new Harmony(Name)))
+            var harm = new Harmony(Name);
+            if (!PatchHelpers.HarmonyPatchAll(Log, harm))
             {
                 failed = true;
                 return;
             }
-#endif
-
+            else
+            {
+                Log.Info("Patches applied.");
+            }
+            
             sessionManager = torch.Managers.GetManager<TorchSessionManager>();
             sessionManager.SessionStateChanged += SessionStateChanged;
-
+            
+           
             initialized = true;
         }
 
@@ -88,21 +97,57 @@ namespace TorchPlugin
             switch (newstate)
             {
                 case TorchSessionState.Loading:
-                    Log.Debug("Loading");
+                    // we can get away with registering communication here. this way, we dont risk missing an insta-join
+                    PacketRegistry.Init(Log, PluginName);
+                    RegisterPacketActions();
+                    RegisterPackets();
                     break;
 
-                case TorchSessionState.Loaded:
-                    Log.Debug("Loaded");
+                case TorchSessionState.Loaded:                    
                     break;
 
                 case TorchSessionState.Unloading:
-                    Log.Debug("Unloading");
                     break;
 
                 case TorchSessionState.Unloaded:
-                    Log.Debug("Unloaded");
                     break;
             }
+        }
+
+        private void RegisterPacketActions()
+        {
+            PluginValidationResponse.ProcessServerAction += PluginValidationResponse_ProcessServerAction;
+            
+        }
+
+        private void PluginValidationResponse_ProcessServerAction(MessageBase obj)
+        {
+
+            Log.Info("Received a response from client. Checking expected response list...");
+        }
+
+        private void RegisterPackets()
+        {
+
+            PacketRegistry.Register<ProtoPacketData<PluginValidationRequest>>(
+                110,
+                () => new ProtoPacketData<PluginValidationRequest>(),
+                (packet, sender) =>
+                {
+                    var message = packet.GetMessage();
+                    message.ProcessServer();
+                }
+            );
+
+            PacketRegistry.Register<ProtoPacketData<PluginValidationResponse>>(
+               111,
+               () => new ProtoPacketData<PluginValidationResponse>(),
+               (packet, sender) =>
+               {
+                   var message = packet.GetMessage();
+                   message.ProcessServer();
+               }
+           );
         }
 
         public override void Dispose()
@@ -113,6 +158,7 @@ namespace TorchPlugin
 
                 sessionManager.SessionStateChanged -= SessionStateChanged;
                 sessionManager = null;
+              
 
                 Log.Debug("Disposed");
             }
@@ -141,7 +187,7 @@ namespace TorchPlugin
 
         private void CustomUpdate()
         {
-            // TODO: Put your update processing here. It is called on every simulation frame!
+            // TODO: Put your update processing here. It is called on every simulation frame!            no -F
             PatchHelpers.PatchUpdates();
         }
     }

@@ -1,14 +1,17 @@
 #if !TORCH
 
+using Shared.Struct;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net;
 using System.Runtime.CompilerServices;
 
 namespace Shared.Config
 {
     public class PluginConfig : IPluginConfig
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler PropertyChanged;       
 
         private void SetValue<T>(ref T field, T value, [CallerMemberName] string propName = "")
         {
@@ -16,11 +19,11 @@ namespace Shared.Config
                 return;
 
             field = value;
-
+            
             OnPropertyChanged(propName);
         }
 
-        private void OnPropertyChanged([CallerMemberName] string propName = "")
+        public void OnPropertyChanged([CallerMemberName] string propName = "")
         {
             PropertyChangedEventHandler propertyChanged = PropertyChanged;
             if (propertyChanged == null)
@@ -29,11 +32,14 @@ namespace Shared.Config
             propertyChanged(this, new PropertyChangedEventArgs(propName));
         }
 
+        private double tokenValidTime;
         private bool enabled = true;
         private bool detectCodeChanges = true;
-        // TODO: Implement your config fields here
-        // The default values here will apply to Client and Dedicated.
-        // The default values for Torch are defined in TorchPlugin.
+        private string secret = null;
+        private ObservableCollection<PluginListEntry> analyzedPlugins = new ObservableCollection<PluginListEntry>();
+        private ObservableCollection<string> selectedPlugins = new ObservableCollection<string>();
+        PluginListType pluginListType = PluginListType.Whitelist;
+        ListMatchAction listMatchAction = ListMatchAction.None;
 
         public bool Enabled
         {
@@ -47,7 +53,41 @@ namespace Shared.Config
             set => SetValue(ref detectCodeChanges, value);
         }
 
-        // TODO: Encapsulate your config fields as properties here
+        public string Secret 
+        {
+            get => secret;
+            set => SetValue(ref secret, value);
+        }
+
+        public double TokenValidTime 
+        { 
+            get => TokenValidTime; 
+            set => SetValue(ref tokenValidTime, value); 
+        }
+
+        public ObservableCollection<PluginListEntry> AnalyzedPlugins
+        {
+            get => analyzedPlugins;
+            set => SetValue(ref  analyzedPlugins, value);
+        }
+
+        public ObservableCollection<string> SelectedPlugins
+        {
+            get => selectedPlugins;
+            set => SetValue(ref selectedPlugins, value);
+        }
+
+        PluginListType IPluginConfig.PluginListType 
+        { 
+            get => pluginListType;
+            set => SetValue(ref pluginListType, value);
+        }
+
+        ListMatchAction IPluginConfig.ListMatchAction 
+        { 
+            get => listMatchAction;
+            set => SetValue(ref listMatchAction, value);
+        }
     }
 }
 

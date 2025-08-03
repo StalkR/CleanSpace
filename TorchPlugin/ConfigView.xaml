@@ -1,54 +1,115 @@
-<!-- ReSharper disable once Xaml.RedundantNamespaceAlias -->
-<UserControl x:Class="TorchPlugin.ConfigView"
+<UserControl x:Class="CleanSpace.ConfigView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:TorchPlugin"
+             xmlns:local="clr-namespace:CleanSpace" d:DataContext="{d:DesignInstance Type=local:ViewModelConfig}"
              mc:Ignorable="d"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800" Loaded="configPanelLoaded">
 
     <Grid>
-
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" SharedSizeGroup="Labels" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="Checkboxes" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" SharedSizeGroup="Buttons" />
+        <Grid.ColumnDefinitions>            
+            <ColumnDefinition Width="*"/>
+            <!-- Tab content -->
         </Grid.ColumnDefinitions>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <!-- TODO: Add row definitions if you start using new rows -->
-        </Grid.RowDefinitions>
+        <TabControl x:Name="MainTabControl"
+                    Grid.Column="1"
+                    TabStripPlacement="Left"
+                    Margin="5"
+                    Padding="0"
+                    Background="White"
+                    BorderThickness="0">
 
-        <!-- Title -->
-        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Text="PluginTemplate" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="5" />
+            <!-- GENERAL TAB -->
+            <TabItem Header="General">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Labels" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Checkboxes" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Buttons" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-        <!-- Enabled -->
-        <TextBlock Grid.Row="1" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="5" />
-        <CheckBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Name="Enabled" IsChecked="{Binding Enabled}" Margin="5" />
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Text="PluginDetector" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="5" />
 
-        <!-- DetectCodeChanges -->
-        <TextBlock Grid.Row="2" Grid.Column="0" Text="Detect code changes" VerticalAlignment="Center" Margin="5" />
-        <CheckBox Grid.Row="2" Grid.Column="1" Name="DetectCodeChanges" IsChecked="{Binding DetectCodeChanges}" Margin="5" />
-        <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Text="Enables checking for changes in patched game code (disable this on Proton/Linux)" VerticalAlignment="Center" Margin="5" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="5" />
+                    <CheckBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Name="Enabled" IsChecked="{Binding Enabled}" Margin="5" />
 
-        <!-- TODO: Add UI for your configuration properties, examples:
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Detect code changes" VerticalAlignment="Center" Margin="5" />
+                    <CheckBox Grid.Row="2" Grid.Column="1" Name="DetectCodeChanges" IsChecked="{Binding DetectCodeChanges}" Margin="5" />
+                    <TextBlock Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Text="Enables checking for changes in patched game code (disable this on Proton/Linux)" VerticalAlignment="Center" Margin="5" />
+                </Grid>
+            </TabItem>
 
-        <TextBlock Grid.Row="3" Grid.Column="0" Text="Label of String Property" VerticalAlignment="Center" Margin="5"/>
-        <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Name="NameOfStringProperty" Text="{Binding NameOfStringProperty}" Margin="5"/>
+            <!-- SECURITY TAB -->
+            <TabItem Header="Security">
+                <StackPanel Margin="10" VerticalAlignment="Top">
+                    <TextBlock Text="Plugin Validation Seed" Margin="5"/>
+                    <PasswordBox Name="SeedPasswordBox" Margin="5" Width="300"/>
 
-        <TextBlock Grid.Row="4" Grid.Column="0" Text="Label of Int Property" VerticalAlignment="Center" Margin="5"/>
-        <TextBox Grid.Row ="4" Grid.Column="1" Grid.ColumnSpan="2" Name="NameOfIntProperty" Text="{Binding NameOfIntProperty}" Margin="5"/>
+                    <TextBlock Text="Plugin List Mode" Margin="5"/>
+                    <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedIndex="0">
+                        <ComboBoxItem Content="Whitelist"/>
+                        <ComboBoxItem Content="Blacklist"/>
+                    </ComboBox>
 
-        <TextBlock Grid.Row="5" Grid.Column="0" Text="Label of Bool Property" VerticalAlignment="Center" Margin="5"/>
-        <CheckBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2"Name="NameOfBoolProperty" IsChecked="{Binding NameOfBoolProperty}" Margin="5"/>
+                    <TextBlock Text="On Match Action" Margin="5"/>
+                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedIndex="0">
+                        <ComboBoxItem Content="Ignore"/>
+                        <ComboBoxItem Content="Notify"/>
+                        <ComboBoxItem Content="Allow"/>
+                        <ComboBoxItem Content="Deny"/>
+                    </ComboBox>
+                    <RichTextBox Height="242" Width="552">
+                        <FlowDocument>
+                            <Paragraph>
+                                <Run Text="RichTextBox"/>
+                            </Paragraph>
+                        </FlowDocument>
+                    </RichTextBox>
+                </StackPanel>
+            </TabItem>
 
-        <Button Grid.Row="6" Grid.Column="2" Content="Some Button" Margin="5" Click="SomeButton_OnClick"></Button>
+            <!-- PLUGINS TAB -->
+            <TabItem Header="Plugins">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-        -->
+                    <!-- Drop Area -->
+                    <Border Grid.Row="0" Height="100" BorderBrush="Gray" BorderThickness="1" Margin="0 0 0 10" Background="#FFF" AllowDrop="True"
+                            Drop="PluginDropArea_Drop" DragOver="PluginDropArea_DragOver" DragLeave="PluginDropArea_DragLeave">
+                        <TextBlock Text="Drop plugin .zip or .dll files here to analyze" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Gray"/>
+                    </Border>
+
+                    <!-- Plugin Hash Grid -->
+                    <DataGrid Grid.Row="1" Name="PluginHashGrid" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Select" Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Plugin Name" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="*"/>
+                            <DataGridTextColumn Header="Assembly Name" Binding="{Binding AssemblyName}" Width="*"/>
+                            <DataGridTextColumn Header="Last Hashed On" Binding="{Binding LastHashed}" Width="*"/>
+                            <DataGridTextColumn Header="Hash" Binding="{Binding Hash}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+           
+        </TabControl>
     </Grid>
 </UserControl>

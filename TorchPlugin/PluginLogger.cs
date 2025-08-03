@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using NLog;
 using Shared.Logging;
 
-namespace TorchPlugin
+namespace CleanSpace
 {
     public class PluginLogger : LogFormatter, IPluginLogger
     {

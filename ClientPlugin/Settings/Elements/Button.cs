@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using VRage.Utils;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     internal class ButtonAttribute : Attribute, IElement
     {

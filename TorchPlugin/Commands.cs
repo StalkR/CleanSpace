@@ -4,7 +4,7 @@ using Torch.Commands;
 using Torch.Commands.Permissions;
 using VRage.Game.ModAPI;
 
-namespace TorchPlugin
+namespace CleanSpace
 {
     public class Commands : CommandModule
     {
@@ -19,7 +19,7 @@ namespace TorchPlugin
         // TODO: Implement subcommands as needed
         private void RespondWithHelp()
         {
-            Respond("PluginTemplate commands:");
+            Respond("PluginDetector commands:");
             Respond("  !cmd help");
             Respond("  !cmd info");
             Respond("    Prints the current configuration settings.");
@@ -33,8 +33,8 @@ namespace TorchPlugin
 
         private void RespondWithInfo()
         {
-            var config = Plugin.Instance.Config;
-            Respond($"{Plugin.PluginName} plugin is enabled: {Format(config.Enabled)}");
+            var config = TorchDetectorPlugin.Instance.Config;
+            Respond($"{TorchDetectorPlugin.PluginName} plugin is enabled: {Format(config.Enabled)}");
             // TODO: Respond with your plugin settings
             // For example:
             //Respond($"custom_setting: {Format(config.CustomSetting)}");
@@ -75,7 +75,7 @@ namespace TorchPlugin
 
         // ReSharper disable once UnusedMember.Global
 
-        [Command("cmd help", "PluginTemplate: Help")]
+        [Command("cmd help", "PluginDetector: Help")]
         [Permission(MyPromoteLevel.None)]
         public void Help()
         {
@@ -83,7 +83,7 @@ namespace TorchPlugin
         }
 
         // ReSharper disable once UnusedMember.Global
-        [Command("cmd info", "PluginTemplate: Prints the current settings")]
+        [Command("cmd info", "PluginDetector: Prints the current settings")]
         [Permission(MyPromoteLevel.None)]
         public void Info()
         {
@@ -91,7 +91,7 @@ namespace TorchPlugin
         }
 
         // ReSharper disable once UnusedMember.Global
-        [Command("cmd enable", "PluginTemplate: Enables the plugin")]
+        [Command("cmd enable", "PluginDetector: Enables the plugin")]
         [Permission(MyPromoteLevel.Admin)]
         public void Enable()
         {
@@ -100,7 +100,7 @@ namespace TorchPlugin
         }
 
         // ReSharper disable once UnusedMember.Global
-        [Command("cmd disable", "PluginTemplate: Disables the plugin")]
+        [Command("cmd disable", "PluginDetector: Disables the plugin")]
         [Permission(MyPromoteLevel.Admin)]
         public void Disable()
         {
@@ -110,7 +110,7 @@ namespace TorchPlugin
 
         // TODO: Subcommand
         // ReSharper disable once UnusedMember.Global
-        [Command("cmd subcmd", "PluginTemplate: TODO: Subcommand")]
+        [Command("cmd subcmd", "PluginDetector: TODO: Subcommand")]
         [Permission(MyPromoteLevel.Admin)]
         public void SubCmd(string name, string value)
         {

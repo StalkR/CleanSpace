@@ -1,5 +1,5 @@
-using ClientPlugin.Settings;
-using ClientPlugin.Settings.Elements;
+using CleanSpaceShared.Settings;
+using CleanSpaceShared.Settings.Elements;
 using Sandbox.Graphics.GUI;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,7 +9,7 @@ using VRage.Input;
 using VRageMath;
 
 
-namespace ClientPlugin
+namespace CleanSpaceShared
 {
     public enum ExampleEnum
     {

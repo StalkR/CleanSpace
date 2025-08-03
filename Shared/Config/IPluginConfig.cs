@@ -1,15 +1,25 @@
+using Shared.Struct;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 
 namespace Shared.Config
 {
     public interface IPluginConfig : INotifyPropertyChanged
     {
-        // Enables the plugin
         bool Enabled { get; set; }
-
-        // Enables checking for changes in patched game code (disable this on Proton/Linux)
         bool DetectCodeChanges { get; set; }
+        string Secret { get; set; }
+        double TokenValidTime { get; set; }
 
-        // TODO: Add config properties here, then extend the implementing classes accordingly
+
+    // Server Plugin
+        ObservableCollection<PluginListEntry> AnalyzedPlugins { get; set; }
+        ObservableCollection<string> SelectedPlugins   { get; set; }
+
+        PluginListType PluginListType { get; set; }
+        ListMatchAction ListMatchAction { get; set; }
+
     }
 }

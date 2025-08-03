@@ -10,7 +10,7 @@ using VRage.Utils;
 using VRage;
 using VRageMath;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     internal class KeybindAttribute : Attribute, IElement
     {

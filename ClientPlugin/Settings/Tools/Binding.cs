@@ -1,6 +1,6 @@
 using VRage.Input;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     public struct Binding
     {

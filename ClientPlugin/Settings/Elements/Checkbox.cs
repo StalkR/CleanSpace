@@ -2,7 +2,7 @@ using Sandbox.Graphics.GUI;
 using System;
 using System.Collections.Generic;
 
-namespace ClientPlugin.Settings.Elements
+namespace CleanSpaceShared.Settings.Elements
 {
     class CheckboxAttribute : Attribute, IElement
     {
