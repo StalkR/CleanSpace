@@ -5,7 +5,7 @@ on:
       - "v0*.*.*"
 jobs:
   release:
-    runs-on: latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
