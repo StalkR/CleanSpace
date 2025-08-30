@@ -3,18 +3,16 @@ using CleanSpaceShared.Networking;
 using HarmonyLib;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
+using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Windows.Documents;
+using Torch;
 using VRage;
 using VRage.GameServices;
 using VRage.Network;
 using VRage.Utils;
-using static Sandbox.Game.Replication.History.MySnapshotHistory;
 
 namespace CleanSpace.Patch
 {
@@ -33,41 +31,70 @@ namespace CleanSpace.Patch
         // Returning false = skip original
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public static bool Prefix(ref ConnectedClientDataMsg msg, ulong steamId)
-        {
-            if (!InitiateCleanSpaceCheck(steamId, msg))
-            {
-                return false; // Cancel original OnConnectedClient; They failed, the fools.
-            }
-            return true;
+        {            
+            return CleanSpaceTorchPlugin.InitiateCleanSpaceCheck(steamId); ;
         }
 
-        private static List<ulong> pending = new List<ulong>();
-        private static List<ulong> passed = new List<ulong>();
-        private static bool InitiateCleanSpaceCheck(ulong steamId, ConnectedClientDataMsg msg)
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        [HarmonyReversePatch]
+        public static void CallPrivateMethod(MyDedicatedServerBase instance, ref ConnectedClientDataMsg msg, EndpointId playerId)
         {
-            if (passed.Contains(steamId))
-            {
-                return true;
-            }
+            // This method body will be replaced by the original private method's IL
+            throw new NotImplementedException("This method should be replaced by Harmony!");
+        }
+    }
 
-            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId} .");        
-            ValidationManager.RegisterNonceForPlayer(steamId);
-         
+    [HarmonyPatch(typeof(MyDedicatedServerBase))]
+    public class ConnectedClientSendJoinPatch
+    {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static MethodBase TargetMethod()
+        {
+            return typeof(MyDedicatedServerBase).GetMethod("SendJoinResult", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
 
-            var message = new PluginValidationRequest
-            {
-                SenderId = MyMultiplayer.Static.ServerId,
-                TargetType = MessageTarget.Client,
-                Target = steamId,
-                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = ValidationManager.GetNonceForPlayer(steamId)
-            };
-            
-            PacketRegistry.Send(message, new EndpointId(steamId), MyP2PMessageEnum.Reliable);             
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        [HarmonyReversePatch]
+        public static void CallPrivateMethod(MyDedicatedServerBase instance, ulong sendTo, JoinResult joinResult, ulong adminID = 0uL)
+        {
+            // This method body will be replaced by the original private method's IL
+            throw new NotImplementedException("This method should be replaced by Harmony!");
+        }
+    }
 
+    [HarmonyPatch(typeof(MyDedicatedServerBase))]
+    public class IsUniqueMemberNamePatch
+    {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static MethodBase TargetMethod()
+        {
+            return typeof(MyDedicatedServerBase).GetMethod("IsUniqueMemberName", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
 
-            // now we wait for a response, and while we do we block a successful join. The response is received and handled in the actual Messaging class, which calls back to this one.
-            return false;
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        [HarmonyReversePatch]
+        public static bool CallPrivateMethod(MyDedicatedServerBase instance, string name)
+        {
+            // This method body will be replaced by the original private method's IL
+            throw new NotImplementedException("This method should be replaced by Harmony!");
+        }
+    }
+
+    [HarmonyPatch(typeof(MyMultiplayerBase))]
+    public class RaiseClientJoinedPatch
+    {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static MethodBase TargetMethod()
+        {
+            return typeof(MyDedicatedServerBase).GetMethod("RaiseClientJoined", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        [HarmonyReversePatch]
+        public static void CallPrivateMethod(MyMultiplayerBase instance, ulong changedUser, string userName)
+        {
+            // This method body will be replaced by the original private method's IL
+            throw new NotImplementedException("This method should be replaced by Harmony!");
         }
     }
 }

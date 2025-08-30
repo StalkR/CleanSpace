@@ -11,6 +11,8 @@ namespace CleanSpaceShared.Networking
 
     [ProtoContract]
     [ProtoInclude(110, typeof(PluginValidationRequest))]
+    [ProtoInclude(111, typeof(PluginValidationResponse))]
+    [ProtoInclude(112, typeof(PluginValidationResult))]
     public abstract class MessageBase
     {
         [ProtoMember(1)] public ulong SenderId;
@@ -18,20 +20,8 @@ namespace CleanSpaceShared.Networking
         [ProtoMember(3)] public ulong Target;
         [ProtoMember(4)] public long UnixTimestamp;
         [ProtoMember(5)] public string Nonce;
-
         [ProtoIgnore] public bool should_compress = false;
-
-        public static event Action<MessageBase> ProcessClientAction;
-        public static event Action<MessageBase> ProcessServerAction;
-
-        public void ProcessClient()
-        {
-            ProcessClientAction?.Invoke(this);
-        }
-
-        public void ProcessServer()
-        {
-            ProcessServerAction?.Invoke(this);
-        }
+        public abstract void ProcessClient<T>(T msg) where T : MessageBase;
+        public abstract void ProcessServer<T>(T msg) where T : MessageBase;
     }
 }

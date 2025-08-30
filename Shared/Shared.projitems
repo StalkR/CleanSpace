@@ -12,20 +12,22 @@
     <Compile Include="$(MSBuildThisFileDirectory)Config\IPluginConfig.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Config\PersistentConfig.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Config\PluginConfig.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)events\EventHub.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logging\IPluginLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logging\LogFormatter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logging\PluginLogger.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\IProtoPacketData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\IProtoPacketData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)networking\MessageFactory.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)networking\NetworkEnvelope.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\ProtoPacketData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\Envelope.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\ProtoPacketData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\ValidationManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scanner\AssemblyScanner.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\ListMatchAction.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Struct\PluginListEntry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\PluginListType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\ValidationResultCode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\CompressionUtil.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Networking\MessageBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\MessageBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PacketRegistry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResponse.cs" />
@@ -41,6 +43,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Tools\Hashing.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Tools\TranspilerHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Tools\WineDetector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Util\EncryptionUtil.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)util\MiscUtil.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Util\TokenUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)..\README.md">
@@ -53,6 +58,7 @@
     <Content Include="$(MSBuildThisFileDirectory)Patches\LoadData.patched.il" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Util\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Networking\Packet\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Events\" />
   </ItemGroup>
 </Project>

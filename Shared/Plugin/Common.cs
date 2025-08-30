@@ -14,13 +14,15 @@ namespace Shared.Plugin
 
         public static string GameVersion;
         public static string DataDir;
-
-        public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir)
+        public static string PluginName;
+        public static bool IsServer;
+        public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger)
         {
             Plugin = plugin;
-            Logger = plugin.Log;
+            Logger = logger;
             Config = plugin.Config;
-
+            PluginName = pluginName;
+            IsServer = isServer;
             GameVersion = gameVersion;
             DataDir = Path.Combine(storageDir, "CleanSpace");
 

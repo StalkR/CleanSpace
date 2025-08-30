@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using NLog;
 using Shared.Logging;
+using VRage.Utils;
 
 namespace CleanSpace
 {
@@ -11,7 +12,7 @@ namespace CleanSpace
 
         public PluginLogger(string pluginName) : base("")
         {
-            logger = LogManager.GetLogger(pluginName);
+            logger = LogManager.GetLogger(pluginName);        
         }
 
         public bool IsTraceEnabled => logger.IsTraceEnabled;
@@ -26,7 +27,7 @@ namespace CleanSpace
         {
             if (!IsTraceEnabled)
                 return;
-
+           
             logger.Trace(Format(ex, message, data));
         }
 

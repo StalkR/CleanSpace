@@ -33,6 +33,7 @@ namespace CleanSpaceShared.Scanner
             return null;
         }
 
+        public static string GetOwnHash() => GetAssemblyFingerprint(GetOwnAssembly());
         public static Assembly GetOwnAssembly() => Assembly.GetExecutingAssembly();
 
         public static bool IsValidPlugin(Assembly assembly)

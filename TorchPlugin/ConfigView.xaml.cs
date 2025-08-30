@@ -28,9 +28,9 @@ namespace CleanSpace
             Instance = this;
             InitializeComponent();
             DataContext = CleanSpaceTorchPlugin.Instance.Config;
-            PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;            
+            PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
+            PluginListModeCombo.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.ListMatchActions;
         }
-
         private void PluginDropArea_DragOver(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -185,6 +185,11 @@ namespace CleanSpace
         }
 
         private void PluginDropArea_DragLeave(object sender, DragEventArgs e)
+        {
+
+        }
+
+        private void SeedPasswordResetBtn_Click(object sender, RoutedEventArgs e)
         {
 
         }

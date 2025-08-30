@@ -78,6 +78,7 @@ namespace Shared.Config
             }
 
             log.Info("Writing default configuration file: {0}", path);
+            var p = System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
             var config = new PersistentConfig<T>(path, new T());
             config.Save();
             return config;

@@ -1,26 +1,36 @@
 ﻿#define USE_HARMONY
 
+using CleanSpace.Patch;
+using CleanSpaceShared.Networking;
+using HarmonyLib;
+using NLog;
+using Sandbox;
+using Sandbox.Engine.Multiplayer;
+using Sandbox.Engine.Networking;
+using Sandbox.Game;
+using Sandbox.Game.Multiplayer;
+using Sandbox.Game.World;
+using Shared.Config;
+using Shared.Events;
+using Shared.Logging;
+using Shared.Patches;
+using Shared.Plugin;
+using Shared.Struct;
+using SteamKit2;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Windows.Controls;
-using CleanSpaceShared.Networking;
-using HarmonyLib;
-using NLog.LayoutRenderers;
-using Sandbox.Engine.Multiplayer;
-using Sandbox.Game;
-using Shared.Config;
-using Shared.Logging;
-using Shared.Patches;
-using Shared.Plugin;
-
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
+using Torch.Utils;
+using VRage.GameServices;
 using VRage.Network;
 using VRage.Utils;
 
@@ -37,6 +47,7 @@ namespace CleanSpace
 
         public IPluginLogger Log => Logger;
         private static readonly IPluginLogger Logger = new PluginLogger(PluginName);
+        
 
         public IPluginConfig Config => config?.Data;
         private PersistentConfig<ViewModelConfig> config;
@@ -64,7 +75,7 @@ namespace CleanSpace
             // Allow the debugger some time to connect once the plugin assembly is loaded
             Thread.Sleep(100);
 #endif
-            
+           
             Instance = this;
             Log.Info("Init");
 
@@ -73,7 +84,7 @@ namespace CleanSpace
             
             var gameVersionNumber = MyPerGameSettings.BasicGameInfo.GameVersion ?? 0;
             var gameVersion = new StringBuilder(MyBuildNumbers.ConvertBuildNumberFromIntToString(gameVersionNumber)).ToString();
-            Common.SetPlugin(this, gameVersion, StoragePath);
+            Common.SetPlugin(this, gameVersion, StoragePath, "Clean Space", true, Logger);
 
             var harm = new Harmony(Name);
             if (!PatchHelpers.HarmonyPatchAll(Log, harm))
@@ -88,9 +99,120 @@ namespace CleanSpace
             
             sessionManager = torch.Managers.GetManager<TorchSessionManager>();
             sessionManager.SessionStateChanged += SessionStateChanged;
-            
-           
+            torch.GameStateChanged += Torch_GameStateChanged;
+
             initialized = true;
+            Init_Events();
+        }
+
+        private void Init_Events()
+        {
+            EventHub.ClientCleanSpaceResponded += EventHub_ClientCleanSpaceResponded;
+        }
+
+        private void EventHub_ClientCleanSpaceResponded(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            object[] args = e.Args;
+            if (args.Length == 0)
+            {
+                Log.Error("ClientCleanSpaceResponded triggered but CleanSpaceTargetedEventArgs had no Args.");
+                return;
+            }
+            if (!(args[0] is PluginValidationResponse))
+            {
+                Log.Error("ClientCleanSpaceResponded triggered but response was not a response.");
+                return;
+            }
+
+            PluginValidationResponse r = (PluginValidationResponse)args[0];
+            string nonce = r.Nonce;
+            ulong id = r.SenderId;
+            List<string> analysis = r.PluginHashes;
+            Log.Info($"Hash list for client {id}: " + analysis.Join());
+            ValidationResultData validationResult = ValidationManager.Validate(id, r.Nonce, analysis);
+            Log.Info($"Validation status for {id}: " + validationResult.Code.ToString());
+
+            switch (validationResult.Code)
+            {
+                case ValidationResultCode.ALLOWED:
+                        passed.Add(id);
+                        //ConnectedClientPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.OK);
+                    break;
+                
+                case ValidationResultCode.REJECTED_CLEANSPACE_HASH:
+
+                    break;
+
+                case ValidationResultCode.EXPIRED_TOKEN:
+                    
+                    break;
+            }
+        }
+
+        private static List<ulong> pending = new List<ulong>();
+        private static List<ulong> passed = new List<ulong>();
+        public static bool InitiateCleanSpaceCheck(ulong steamId)
+        {
+            if (passed.Contains(steamId))
+            {
+                // TODO: Send a message congratulating the user for not cheating.
+                return true;
+            }
+
+            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId} .");
+            string nonce = ValidationManager.RegisterNonceForPlayer(steamId);
+            var message = new PluginValidationRequest
+            {
+                SenderId = MyGameService.OnlineUserId,
+                TargetType = MessageTarget.Client,
+                Target = steamId,
+                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Nonce = nonce
+            };
+            PacketRegistry.Send(message, new EndpointId(steamId), nonce);
+            return false;
+        }
+        
+ 
+        protected struct MyConnectedClientData
+        {
+            public string Name;
+
+            public string PlatformName;
+
+            public bool IsAdmin;
+
+            public bool IsProfiling;
+
+            public string ServiceName;
+        }
+       
+
+        private void Torch_GameStateChanged(Sandbox.MySandboxGame game, TorchGameState newState)
+        {
+           if(newState == TorchGameState.Loaded)
+            {
+                MyMultiplayer.Static.ClientJoined += Static_ClientJoined;
+            }
+        }
+
+        public void printStateFor(ulong steamid)
+        {
+            MyP2PSessionState state = new MyP2PSessionState();
+            if (MyGameService.Peer2Peer.GetSessionState(steamid, ref state))
+            {
+                Log.Info($"Connecting: {state.Connecting}");
+                Log.Info($"ConnectionActive: {state.ConnectionActive}");
+                Log.Info($"RemoteIP: {state.RemoteIP}");
+                Log.Info($"RemotePort: {state.RemotePort}");
+            }
+        }
+        private void Static_ClientJoined(ulong steamId, string username)
+        {
+            Log.Info($"Joined: {steamId}:{username}");
+            //InitiateCleanSpaceCheck(steamId);
+          
+          
         }
 
         private void SessionStateChanged(ITorchSession session, TorchSessionState newstate)
@@ -98,17 +220,20 @@ namespace CleanSpace
             switch (newstate)
             {
                 case TorchSessionState.Loading:
-                    // we can get away with registering communication here. this way, we dont risk missing an insta-join
                     PacketRegistry.Init(Log, PluginName);
-                    RegisterPacketActions();
                     RegisterPackets();
+
                     break;
 
-                case TorchSessionState.Loaded:                    
+                case TorchSessionState.Loaded:
+                  
+                   
                     break;
-
+             
                 case TorchSessionState.Unloading:
+
                     break;
+
 
                 case TorchSessionState.Unloaded:
                     break;
@@ -123,46 +248,24 @@ namespace CleanSpace
             var sendJoinResult = AccessTools.Method(server.GetType(), "SendJoinResult");
             sendJoinResult?.Invoke(server, new object[] { steamId, JoinResult.TicketCanceled, 0UL });
 
-
-
-            // Optional: also kick player here depending on server API
-        }
-
-
-        private void RegisterPacketActions()
-        {
-            PluginValidationResponse.ProcessServerAction += PluginValidationResponse_ProcessServerAction;
-            
-        }
-
-        private void PluginValidationResponse_ProcessServerAction(MessageBase obj)
-        {
-
-            Log.Info("Received a response from client. Checking expected response list...");
         }
 
         private void RegisterPackets()
         {
 
-            PacketRegistry.Register<ProtoPacketData<PluginValidationRequest>>(
-                110,
-                () => new ProtoPacketData<PluginValidationRequest>(),
-                (packet, sender) =>
-                {
-                    var message = packet.GetMessage();
-                    message.ProcessServer();
-                }
+            PacketRegistry.Register<PluginValidationRequest>(
+              110, () => new ProtoPacketData<PluginValidationRequest>(), SecretPacketFactory<PluginValidationRequest>.handler<ProtoPacketData<PluginValidationRequest>>
             );
 
-            PacketRegistry.Register<ProtoPacketData<PluginValidationResponse>>(
-               111,
-               () => new ProtoPacketData<PluginValidationResponse>(),
-               (packet, sender) =>
-               {
-                   var message = packet.GetMessage();
-                   message.ProcessServer();
-               }
-           );
+            PacketRegistry.Register<PluginValidationResponse>(
+               111, () => new ProtoPacketData<PluginValidationResponse>(),  SecretPacketFactory<PluginValidationResponse>.handler<ProtoPacketData<PluginValidationResponse>>
+            );
+          
+            PacketRegistry.Register<PluginValidationResult>(
+              112,
+              () => new ProtoPacketData<PluginValidationResult>(), SecretPacketFactory<PluginValidationResult>.handler<ProtoPacketData<PluginValidationResult>>
+            );
+
         }
 
         public override void Dispose()

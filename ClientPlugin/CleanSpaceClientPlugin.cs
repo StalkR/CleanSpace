@@ -13,6 +13,7 @@ using Shared.Config;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
+using Shared.Util;
 using SpaceEngineers.Game.GUI;
 using Steamworks;
 using System;
@@ -33,7 +34,6 @@ using VRage.Plugins;
 namespace CleanSpaceShared
 {
 
-   
     // ReSharper disable once UnusedType.Global
     public class CleanSpaceClientPlugin : IPlugin, ICommonPlugin
     {
@@ -52,7 +52,7 @@ namespace CleanSpaceShared
 
         public bool assembly_list_initialized = false;
         public List<Assembly> detectedPluginAssemblies;
-
+       
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public void Init(object gameInstance)
@@ -73,8 +73,8 @@ namespace CleanSpaceShared
             config = PersistentConfig<PluginConfig>.Load(Log, configPath);
 
             var gameVersion = MyFinalBuildConstants.APP_VERSION_STRING.ToString();
-            Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath);
-
+            Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath, "Clean Space", false, Logger);
+            Common.Plugin.Config.Secret = MiscUtil.GetRandomChars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890", 128);
             if (!PatchHelpers.HarmonyPatchAll(Log, new Harmony(Name)))
             {
                 failed = true;
@@ -95,77 +95,34 @@ namespace CleanSpaceShared
             assembly_list_initialized = true;
 
             PacketRegistry.Init(Log, Name);
-            SetPacketActions();
+          
             RegisterPackets();
             MyGuiScreenMainMenuBase.OnOpened = null;
 
         }
 
-        private void SetPacketActions()
-        {
-            PluginValidationRequest.ProcessClientAction += PluginValidationRequest_ProcessAction;
-            PluginValidationRequest.ProcessClientAction += LogMessage;
-        }
 
         private void LogMessage(MessageBase obj)
         {
 
         }
-        private void PluginValidationRequest_ProcessAction(MessageBase obj)
-        {
-            PluginValidationRequest r = (PluginValidationRequest)obj;
-
-            string token = r.Nonce;
-            if (token == null)
-            {
-                Log.Error($"{Name}: Received a validation request from the server, but the server did not provide a token!");
-                return;
-            }
-            string myHash = AssemblyScanner.GetAssemblyFingerprint(AssemblyScanner.GetOwnAssembly());
-            List<Assembly> pluginList = AssemblyScanner.GetPluginAssemblies();           
-            List<String> pluginHashList = new List<String>();
-            pluginList.ForEach((assm) => pluginHashList.Add(AssemblyScanner.GetAssemblyFingerprint(assm)));
-            
-            var steamId = MyMultiplayer.Static.GetOwner();            
-            var message = new PluginValidationResponse
-            {
-                SenderId = steamId,
-                TargetType = MessageTarget.Server,
-                Target = obj.SenderId,
-                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = token,
-                PluginHashes = pluginHashList,
-                CleanSpaceHash = myHash
-            };
-
-            PacketRegistry.Send(message, new EndpointId(steamId), MyP2PMessageEnum.Reliable);
-            Log.Error($"{Name}: Sending a response to validation request.");
-
-        }
-
+     
         private void RegisterPackets()
         {
-            PacketRegistry.Register<ProtoPacketData<PluginValidationRequest>>(
-                110, 
-                
-                () => new ProtoPacketData<PluginValidationRequest>(),
-                (packet, sender) =>
-                {
-                    PluginValidationRequest receivedPacked = packet.GetMessage();
-                    receivedPacked.ProcessClient();
-                }
-
+            PacketRegistry.Register<PluginValidationRequest>(
+                110,                 
+                () => new ProtoPacketData<PluginValidationRequest>()
             );
 
-            PacketRegistry.Register<ProtoPacketData<PluginValidationResponse>>(
+            PacketRegistry.Register<PluginValidationResponse>(
                111,
-               () => new ProtoPacketData<PluginValidationResponse>(),
-               (packet, sender) =>
-               {
-                   PluginValidationResponse message = packet.GetMessage();
-                   message.ProcessServer();
-               }
+               () => new ProtoPacketData<PluginValidationResponse>(), SecretPacketFactory<PluginValidationResponse>.handler<ProtoPacketData<PluginValidationResponse>>
            );
+
+            PacketRegistry.Register<PluginValidationResult>(
+              112,
+              () => new ProtoPacketData<PluginValidationResult>(), SecretPacketFactory<PluginValidationResult>.handler<ProtoPacketData<PluginValidationResult>>
+            );
         }
 
         public void Dispose()
@@ -174,7 +131,7 @@ namespace CleanSpaceShared
             {
                
                 // TODO: Save state and close resources here, called when the game exists (not guaranteed!)
-                // IMPORTANT: Do NOT call harmony.UnpatchAll() here! It may break other plugins.
+                // IMPORTANT: Do NOT call harmony.UnpatchAll() here! I t may break other plugins.
             }
             catch (Exception ex)
             {
@@ -212,15 +169,6 @@ namespace CleanSpaceShared
         {
             Instance.settingsGenerator.SetLayout<Simple>();
             MyGuiSandbox.AddScreen(Instance.settingsGenerator.Dialog);
-        }
-
-        internal void SendPluginValidationResponse(string nonce)
-        {
-            List<string> hashes = new List<string>();
-            detectedPluginAssemblies.ForEach((a) => hashes.Add(AssemblyScanner.GetAssemblyFingerprint(a)));
-            Log.Info($"{Name}: Responding to request for plugin list");
-            //Communication.SendMessageToServer(new PluginValidationResponse() { Nonce = nonce, PluginHashes = hashes });
-            
         }
     }
 }

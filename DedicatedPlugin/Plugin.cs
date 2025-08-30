@@ -44,7 +44,7 @@ namespace DedicatedPlugin
             config = PersistentConfig<PluginConfig>.Load(Log, configPath);
 
             var gameVersion = MyFinalBuildConstants.APP_VERSION_STRING.ToString();
-            Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath);
+            Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath, "Clean Space", true, Logger);
 
             if (!PatchHelpers.HarmonyPatchAll(Log, new Harmony(Name)))
             {

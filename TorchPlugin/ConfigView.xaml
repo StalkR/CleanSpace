@@ -1,3 +1,4 @@
+
 <UserControl x:Class="CleanSpace.ConfigView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -51,20 +52,15 @@
             <TabItem Header="Security">
                 <StackPanel Margin="10" VerticalAlignment="Top">
                     <TextBlock Text="Plugin Validation Seed" Margin="5"/>
-                    <PasswordBox Name="SeedPasswordBox" Margin="5" Width="300"/>
-
+                    <PasswordBox Name="SeedPasswordBox" Margin="5" Width="300" Password="*********" IsEnabled="False"/>
+                    <Button Width="200" Name="SeedPasswordResetBtn" Click="SeedPasswordResetBtn_Click">Reset Seed</Button>
                     <TextBlock Text="Plugin List Mode" Margin="5"/>
-                    <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedIndex="0">
-                        <ComboBoxItem Content="Whitelist"/>
-                        <ComboBoxItem Content="Blacklist"/>
+                    <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedIndex="0" SelectedValue="{Binding PluginListType}" ItemsSource="{Binding PluginListTypes}">
                     </ComboBox>
 
                     <TextBlock Text="On Match Action" Margin="5"/>
-                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedIndex="0">
-                        <ComboBoxItem Content="Ignore"/>
-                        <ComboBoxItem Content="Notify"/>
-                        <ComboBoxItem Content="Allow"/>
-                        <ComboBoxItem Content="Deny"/>
+                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
+                        
                     </ComboBox>
                     <RichTextBox Height="242" Width="552">
                         <FlowDocument>
@@ -106,6 +102,15 @@
                             <DataGridTextColumn Header="Last Hashed On" Binding="{Binding LastHashed}" Width="*"/>
                             <DataGridTextColumn Header="Hash" Binding="{Binding Hash}" Width="2*"/>
                         </DataGrid.Columns>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="{x:Type DataGridRow}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCleanSpace}" Value="1">
+                                        <Setter Property="Background" Value="LightGreen"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                     </DataGrid>
                 </Grid>
             </TabItem>

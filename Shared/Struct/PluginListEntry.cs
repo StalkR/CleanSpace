@@ -26,6 +26,8 @@ namespace Shared.Struct
             }
         }
 
+        public int IsCleanSpace => _assemblyName.Contains("CleanSpace") ? 1 : 0;
+
         public string Name
         {
             get => _name;

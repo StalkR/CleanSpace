@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using Shared.Struct;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +12,28 @@ namespace CleanSpaceShared.Networking
     [ProtoContract]
     public class PluginValidationResult : MessageBase
     {
-        [ProtoMember(1)]
+        [ProtoMember(6)]
         public bool Success;
 
-        [ProtoMember(2)]
+        [ProtoMember(7)]
+        public ValidationResultCode Code;
+
+        [ProtoMember(8)]
         public string Message;
 
-        [ProtoMember(3)]
+        [ProtoMember(9)]
         public List<string> PluginList;
-    }
 
-}
+        public override void ProcessClient<PluginValidationResult>(PluginValidationResult r)
+        {
+           
+        }
+
+        public override void ProcessServer<PluginValidationResult>(PluginValidationResult r)
+        {
+           
+        }
+    }
+        
+
+    }

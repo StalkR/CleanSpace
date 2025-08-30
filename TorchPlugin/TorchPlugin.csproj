@@ -495,9 +495,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConfigView.xaml.cs" />
-    <Compile Include="Util\TokenUtility.cs" />
     <Compile Include="Patch\OnConnectedClientPatch.cs" />
-    <Compile Include="ValidationManager.cs" />
     <Compile Include="CleanSpaceTorchPlugin.cs" />
     <Compile Include="ViewModelConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -520,6 +518,9 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="ConfigView.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Util\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\Shared\Shared.projitems" Label="Shared" />

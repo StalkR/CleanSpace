@@ -1,41 +1,113 @@
-﻿using ProtoBuf;
-
+﻿using CleanSpace;
+using ProtoBuf;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
+using Sandbox.Game.Multiplayer;
 using Shared.Logging;
+using Shared.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using VRage;
+using VRage.Collections;
 using VRage.GameServices;
-using VRage.Library.Collections;
 using VRage.Network;
 using VRage.Utils;
+using static Sandbox.Engine.Networking.MyNetworkWriter;
 
 
 namespace CleanSpaceShared.Networking
 {
-    public static class PacketRegistry
-    {
 
-    private struct PacketInfo
+    public static class SecretPacketFactory<T> where T : MessageBase
     {
-        public Func<IProtoPacketData> Factory;
-        public Action<IProtoPacketData, EndpointId> Handler;
+        public static bool IsServer => Shared.Plugin.Common.IsServer;
+        public static void handler<U>(IProtoPacketData packet, EndpointId sender) where U : ProtoPacketData<T>
+        {
+            T message;
+            try
+            {
+                if (ValidationManager.NonceExistsForPlayer(sender.Value))
+                {
+                    var n = ValidationManager.GetNonceForPlayer(sender.Value);
+                    Shared.Plugin.Common.Logger.Debug($"Exist LEN: {n.Length}");
+                    message = ((U)packet).GetMessage(n);
+
+                    if (IsServer)
+                    {
+                        message.ProcessServer(message);
+                    }
+                    else
+                    {
+                        message.ProcessClient(message);
+                    }
+                }
+                else
+                {
+                    Shared.Plugin.Common.Logger.Warning($"Received a packet from {sender.Value} with an unexpected nonce. Ignoring.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Shared.Plugin.Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value} with key. {ex.Message}");
+                return;
+            }
+
+           
+            ((U)packet).Return();
+        }
     }
 
+    public static class DefaultPacketFactory<T> where T: MessageBase
+    {
+        public static bool IsServer => Shared.Plugin.Common.IsServer;
+        public static void handler<U>(IProtoPacketData packet, EndpointId sender) where U: ProtoPacketData<T>
+        {
+            T message;
+            try
+            {
+                message = ((U)packet).GetMessage();
+            }
+            catch(Exception ex)
+            {
+                Shared.Plugin.Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value}. {ex.Message}");
+                return;
+            }
+            
+            if (IsServer)
+            { 
+
+                message.ProcessServer(message);
+            }
+            else
+            {
+                message.ProcessClient(message);
+            }
+             ((U)packet).Return();
+        }
+    }
+
+
+    public static class PacketRegistry
+    {
+        public static bool IsServer => Shared.Plugin.Common.IsServer;
+        public struct PacketInfo
+        {            
+            public Func<IProtoPacketData> Factory;
+            public Action<IProtoPacketData, EndpointId> Handler;
+        }
+
         public static string PluginName;
-        public static IPluginLogger Logger;
+        public static IPluginLogger Logger => Shared.Plugin.Common.Logger;
 
         private const byte CHANNEL = 225;
 
         private static readonly Dictionary<ushort, PacketInfo> packetInfos = new Dictionary<ushort, PacketInfo>();
         private static readonly Dictionary<Type, ushort> typeToId = new Dictionary<Type, ushort>();
 
-        public static void Register<T>(ushort id, Func<IProtoPacketData> factory, Action<T, EndpointId> handler) where T : IProtoPacketData
+        public static void Register<T>(ushort id, Func<IProtoPacketData> factory, Action<IProtoPacketData, EndpointId> handler = null) where T : MessageBase 
         {
             if (packetInfos.ContainsKey(id))
                 throw new Exception($"Packet ID {id} is already registered");
@@ -43,38 +115,24 @@ namespace CleanSpaceShared.Networking
             packetInfos[id] = new PacketInfo
             {
                 Factory = factory,
-                Handler = (packet, sender) =>
-                {
-                    if (packet is T typed)
-                        handler(typed, sender);
-                    else
-                        throw new InvalidCastException($"Packet ID {id} could not be cast to {typeof(T).Name}");
-                }
+                Handler = handler != null ? handler : DefaultPacketFactory<T>.handler<ProtoPacketData<T>>
             };
 
-            // Store reverse mapping for MessageBase-derived payloads
-            var innerType = typeof(T).IsGenericType ? typeof(T).GenericTypeArguments.First() : null;
-            if (innerType != null && typeof(MessageBase).IsAssignableFrom(innerType))
-                typeToId[innerType] = id;
+            Logger.Info($"Registered packet ID {id} with type {typeof(T).Name}");
+            typeToId[typeof(T)] = id;            
         }
 
-        public static void Send<T>(T message, EndpointId recipient, MyP2PMessageEnum reliability = MyP2PMessageEnum.Reliable)
+        public static void Send<T>(T message, EndpointId recipient, string token, string extraKey = null, MyP2PMessageEnum reliability = MyP2PMessageEnum.Reliable)
            where T : MessageBase
         {
             ushort id = GetPacketId<T>();           
-            var envelope = MessageFactory.Wrap(message,message.should_compress);
+            var envelope = MessageFactory.Wrap(message, token, extraKey, message.should_compress, true);
             envelope.PacketId = id;
-
             var packet = new ProtoPacketData<T>(envelope);
-            var descriptor = new MyNetworkWriter.MyPacketDescriptor
-            {
-                Channel = CHANNEL,
-                Data = packet,
-                MsgType = reliability
-            };
-
-            descriptor.Recipients.Add(recipient);
-            MyNetworkWriter.SendPacket(descriptor);
+            var np = InitSendStream(CHANNEL, recipient, reliability, IsServer ? MyMessageId.SERVER_DATA : MyMessageId.PLAYER_DATA);
+            np.Data = packet;
+            MyNetworkWriter.SendPacket(np);            
+            Logger.Debug($"{PluginName}: Sent message id {envelope.PacketId} with token length {envelope.Key.Length}, payload length {envelope.Payload.Length} and total length {np.Data.Size} to destination {recipient}.");
         }
 
         public static ushort GetPacketId<T>() where T : MessageBase
@@ -85,50 +143,111 @@ namespace CleanSpaceShared.Networking
             throw new Exception($"{PluginName}: Packet type {typeof(T).Name} not registered");
         }
 
+        private static Type _NetworkReaderType = null;
+        public static Type NetworkReaderType => _NetworkReaderType ?? (_NetworkReaderType = ResolveMyNetworkReaderType());
+
+        private static Type _NetworkMessageDelegateType = null;
+
+        public static Type NetworkMessageDelegateType = _NetworkMessageDelegateType ?? (_NetworkMessageDelegateType = NetworkReaderType.Assembly.GetType("Sandbox.Engine.Networking.NetworkMessageDelegate"));
         public static void Init(IPluginLogger log, string pluginName)
         {
-            Logger = log;
+          
             PluginName = pluginName;
 
-            var readerType = ResolveMyNetworkReaderType();
-            if (readerType == null)
+            if (NetworkReaderType == null)
                 throw new Exception("Could not find MyNetworkReader type");
 
-            var setHandlerMethod = readerType.GetMethod("SetHandler", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            if (setHandlerMethod == null)
-            {
-                Logger.Error($"{PluginName}: Failed to find SetHandler method");
-                return;
-            }
-
-            var delegateType = readerType.Assembly.GetType("Sandbox.Engine.Networking.NetworkMessageDelegate");
-            if (delegateType == null)
-            {
-                Logger.Error($"{PluginName}: Failed to find delegate type");
-                return;
-            }
-
+           
             var handlerMethod = typeof(PacketRegistry).GetMethod(nameof(OnPacketReceived), BindingFlags.Static | BindingFlags.NonPublic);
             if (handlerMethod == null)
             {
                 Logger.Error($"{PluginName}: Failed to find OnPacketReceived");
                 return;
             }
+            RegisterHandlerOn(CHANNEL, handlerMethod);
+        }
 
-            var internalDelegate = Delegate.CreateDelegate(delegateType, handlerMethod);
-            setHandlerMethod.Invoke(null, new object[] { CHANNEL, internalDelegate, null });
 
-            Logger.Info($"{PluginName}: Custom packet handler registered on channel {CHANNEL}");
+        static MyPacketDescriptor PullDescriptorFromGamePool()
+        {
+            Type t = typeof(MyNetworkWriter);        
+            FieldInfo f = t.GetField("m_descriptorPool", BindingFlags.NonPublic | BindingFlags.Static);
+            if (f == null)
+                Logger.Error("Could not find field 'm_descriptorPool' on MyNetworkWriter.");
+
+            var pool = (MyConcurrentPool<MyPacketDescriptor>)f.GetValue(null);
+            if (pool == null)
+                Logger.Error("The field 'm_descriptorPool' was null.");
+
+            return pool.Get();
+        }
+
+        static MyPacketDescriptor GetPacketDescriptor(EndpointId userId, MyP2PMessageEnum msgType, int channel)
+        {
+            MyPacketDescriptor myPacketDescriptor = PullDescriptorFromGamePool();
+            myPacketDescriptor.MsgType = msgType;
+            myPacketDescriptor.Channel = channel;
+            if (userId.IsValid)
+            {
+                myPacketDescriptor.Recipients.Add(userId);
+            }
+            return myPacketDescriptor;
+        }
+
+        private static MyNetworkWriter.MyPacketDescriptor InitSendStream(int m_channel, EndpointId endpoint, MyP2PMessageEnum msgType, MyMessageId msgId, byte index = 0)
+        {
+            MyNetworkWriter.MyPacketDescriptor packetDescriptor = GetPacketDescriptor(endpoint, msgType, m_channel);
+           // packetDescriptor.Header.WriteByte((byte)msgId);
+            //packetDescriptor.Header.WriteByte(index);
+            return packetDescriptor;
+        }
+
+
+        private static void RegisterHandlerOn(int channel, MethodInfo handler, Action<ulong> disconnectPeerOnError = null)
+        {
+            if (NetworkReaderType == null)
+                throw new Exception("Could not find MyNetworkReader type");
+
+            var setHandlerMethod = NetworkReaderType.GetMethod("SetHandler", BindingFlags.Static | BindingFlags.Public);
+            if (setHandlerMethod == null)
+            {
+                Logger.Error($"{PluginName}: Failed to find SetHandler method");
+                return;
+            }
+
+            if (NetworkMessageDelegateType == null)
+            {
+                Logger.Error($"{PluginName}: Failed to find delegate type");
+                return;
+            }
+
+            var internalDelegate = Delegate.CreateDelegate(NetworkMessageDelegateType, handler);
+            setHandlerMethod.Invoke(null, new object[] { channel, internalDelegate, disconnectPeerOnError });
+
+            Logger.Info($"{PluginName}: Packet handler registered on channel {channel}");
+        }
+
+        private static void ClearHandlerOn(int channel)
+        {
+            if (NetworkReaderType == null)
+                throw new Exception("Could not find MyNetworkReader type");
+
+            var setHandlerMethod = NetworkReaderType.GetMethod("ClearHandler", BindingFlags.Static | BindingFlags.Public);
+            setHandlerMethod.Invoke(null, new object[] { channel });
+
+            Logger.Info($"{PluginName}: Packet handler cleared for channel {CHANNEL}");
         }
 
         private static void OnPacketReceived(MyPacket packet)
         {
             try
             {
-                Logger.Debug($"{PluginName}: OnPacketReceived started for packet from {packet.Sender.Id}");
+                Logger.Debug($"{PluginName}: OnPacketReceived started for packet from {packet.Sender.Id.Value} received.");
+
                 var stream = packet.ByteStream;
                 var sender = packet.Sender.Id;
-
+                var receivedTime = packet.ReceivedTime;
+                //stream.Position = 10;
                 int remaining = (int)(stream.Length - stream.Position);
 
                 Logger.Debug($"{PluginName}: Stream length={stream.Length}, position={stream.Position}, remaining={remaining}");
@@ -143,42 +262,40 @@ namespace CleanSpaceShared.Networking
                     read += bytesRead;
                 }
 
-                NetworkEnvelope envelope;
+                Envelope envelope;
                 int envelopeLength;
                 using (var ms = new MemoryStream(buffer))
                 {
-                    envelope = Serializer.Deserialize<NetworkEnvelope>(ms);
+                    envelope = Serializer.Deserialize<Envelope>(ms);
                     envelopeLength = (int)ms.Position;
-                    Logger.Debug($"{PluginName}: Deserialized NetworkEnvelope with PacketId={envelope.PacketId}, IsCompressed={envelope.IsCompressed}, PayloadLength={envelope.Payload?.Length ?? 0}, EnvelopeBytes={envelopeLength}");
+                    Logger.Debug($"{PluginName}: Deserialized NetworkEnvelope with PacketId={envelope.PacketId}, IsEncrypted={envelope.IsEncrypted}, IsCompressed={envelope.IsCompressed}, PayloadLength={envelope.Payload?.Length ?? 0}, KeyLength={envelope.Key?.Length ?? 0}, EnvelopeBytes={envelopeLength}");
                 }
 
                 ushort id = envelope.PacketId;
-
                 if (!packetInfos.TryGetValue(id, out var info))
                 {
                     Logger.Warning($"{PluginName}: Unknown packet ID {id} from {sender}");
                     return;
                 }
 
-                Logger.Debug($"{PluginName}: Found PacketInfo for ID {envelope.PacketId}");
                 var rawPacket = info.Factory();
                 if (!(rawPacket is IProtoPacketData proto))
                 {
                     Logger.Warning($"{PluginName}: Packet ID {id} is not a ProtoPacket");
                     return;
                 }
-
-                Logger.Debug($"{PluginName}: Created ProtoPacketData instance for packet ID {envelope.PacketId}");
-                // Read proto body using ByteStream
+                
+                Logger.Debug($"{PluginName}: Created ProtoPacketData instance for packet ID {id}");
                 using (var protoStream = new VRage.ByteStream(buffer, envelopeLength))
                 {
                     proto.Read(protoStream);
-                    Logger.Debug($"{PluginName}: Successfully read proto data from inner buffer");
+                    Logger.Debug($"{PluginName}: Successfully read proto data with length {protoStream.Length} from inner buffer");
                 }
 
-                // Dispatch to handler
                 info.Handler(proto, sender);
-                Logger.Debug($"{PluginName}: Dispatched packet ID {envelope.PacketId} to handler for sender {sender}");
+                Logger.Debug($"{PluginName}: Dispatched packet ID {id} to handler for sender {sender}");
+                
+                
             }
             catch (Exception ex)
             {

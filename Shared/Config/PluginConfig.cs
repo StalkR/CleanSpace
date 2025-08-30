@@ -39,7 +39,7 @@ namespace Shared.Config
         private ObservableCollection<PluginListEntry> analyzedPlugins = new ObservableCollection<PluginListEntry>();
         private ObservableCollection<string> selectedPlugins = new ObservableCollection<string>();
         PluginListType pluginListType = PluginListType.Whitelist;
-        ListMatchAction listMatchAction = ListMatchAction.None;
+        ListMatchAction listMatchAction = ListMatchAction.Deny;
 
         public bool Enabled
         {
@@ -77,13 +77,13 @@ namespace Shared.Config
             set => SetValue(ref selectedPlugins, value);
         }
 
-        PluginListType IPluginConfig.PluginListType 
+        public PluginListType PluginListType 
         { 
             get => pluginListType;
             set => SetValue(ref pluginListType, value);
         }
 
-        ListMatchAction IPluginConfig.ListMatchAction 
+        public ListMatchAction ListMatchAction 
         { 
             get => listMatchAction;
             set => SetValue(ref listMatchAction, value);

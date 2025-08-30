@@ -3,6 +3,7 @@ using ProtoBuf;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using VRage;
 
 namespace CleanSpaceShared.Networking
@@ -11,10 +12,9 @@ namespace CleanSpaceShared.Networking
     {
         private byte[] _buffer;
         private GCHandle _handle;
-
         public ProtoPacketData() { }
 
-        public ProtoPacketData(NetworkEnvelope envelope)
+        public ProtoPacketData(Envelope envelope)
         {
             using (var ms = new MemoryStream())
             {
@@ -48,7 +48,6 @@ namespace CleanSpaceShared.Networking
         {
 
             int remaining = (int)(stream.Length - stream.Position);
-
             PacketRegistry.Logger.Debug($"{PacketRegistry.PluginName}: Stream length={stream.Length}, position={stream.Position}, remaining={remaining}");
             var buffer = new byte[remaining];
             int read = 0;
@@ -65,18 +64,28 @@ namespace CleanSpaceShared.Networking
             _handle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);
         }
 
-        public T GetMessage()
+        public T GetMessage(string key = null)
         {
             if (_buffer == null)
                 throw new InvalidOperationException("No data to deserialize");
 
-            NetworkEnvelope n = null;
+            Envelope n = null;
             MemoryStream ms;
             using (ms = new MemoryStream(_buffer))
             {
-                n = Serializer.Deserialize<NetworkEnvelope>(ms);
-            }           
-            return MessageFactory.Unwrap<T>(n);
+                n = Serializer.Deserialize<Envelope>(ms);
+            }
+
+            T result;
+            try
+            {
+                result = MessageFactory.Unwrap<T>(n, key);
+            }
+            catch (Exception e) {
+
+                throw new InvalidOperationException("Failed to unwrap message with key.");
+            }
+            return result;
         }
     }
 }
