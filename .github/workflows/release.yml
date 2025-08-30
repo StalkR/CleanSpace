@@ -1,18 +1,20 @@
 name: Create Release
+
 on:
   push:
     tags:
       - "v0*.*.*"
+
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest   # could also be windows-latest, but ubuntu is faster/cheaper
     steps:
       - uses: actions/checkout@v4
-      - uses: softprops/action-gh-release@v2
-      - name: Build Artifact
-        run: echo ${{ github.sha }} > release_info.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ClientPlugin\bin\Debug\CleanSpaceClient.zip, TorchPlugin\bin\Debug\CleanSpaceTorch.zip
+          files: |
+            ClientPlugin/bin/Debug/CleanSpaceClient.zip
+            TorchPlugin/bin/Debug/CleanSpaceTorch.zip
