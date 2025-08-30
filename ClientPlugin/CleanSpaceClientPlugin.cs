@@ -1,4 +1,5 @@
-﻿using CleanSpaceShared.Networking;
+﻿using CleanSpace;
+using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
 using CleanSpaceShared.Settings;
 using CleanSpaceShared.Settings.Layouts;
@@ -10,6 +11,7 @@ using Sandbox.Game.Screens;
 using Sandbox.Game.World;
 using Sandbox.Graphics.GUI;
 using Shared.Config;
+using Shared.Events;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
@@ -81,6 +83,43 @@ namespace CleanSpaceShared
                 return;
             }            
             Log.Debug($"{Name} Loaded");
+            init_events();
+        }
+
+        private void init_events()
+        {
+            EventHub.ServerCleanSpaceRequested += EventHub_ServerCleanSpaceRequested;
+        }
+
+        private void EventHub_ServerCleanSpaceRequested(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            object[] args = e.Args;
+
+            PluginValidationRequest r = (PluginValidationRequest)args[0];
+
+            var steamId = Sandbox.Engine.Networking.MyGameService.OnlineUserId;
+
+            if (e.Target == steamId)
+            {
+                string newToken = ValidationManager.RegisterNonceForPlayer(r.SenderId);
+                var message = new PluginValidationResponse
+                {
+                    SenderId = steamId,
+                    TargetType = MessageTarget.Server,
+                    Target = r.SenderId,
+                    UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Nonce = r.Nonce,
+                    PluginHashes = AssemblyScanner.GetPluginAssemblies().Select<Assembly, string>((a) => AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.Nonce))).ToList()
+                };
+
+                // MiscUtil.PrintStateFor(PacketRegistry.Logger, r.SenderId);           
+                PacketRegistry.Send(message, new EndpointId(r.SenderId), newToken, r.Nonce);
+                PacketRegistry.Logger.Info($"{PacketRegistry.PluginName}: Sending a response to validation request.");
+            }
+            else
+            {
+                Log.Error($"{Name}: Received a clean space request... but it was for {r.Target} and not for me ({steamId})?");
+            }
         }
 
         private void menuOpenEvent()

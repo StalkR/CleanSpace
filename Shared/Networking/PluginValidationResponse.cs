@@ -15,6 +15,7 @@ namespace CleanSpaceShared.Networking
         {
             Shared.Plugin.Common.Logger.Info("Test");
         }
+
         public override void ProcessServer<PluginValidationResponse>(PluginValidationResponse r)
         {
             Shared.Plugin.Common.Logger.Info("Test");

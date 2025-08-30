@@ -72,6 +72,7 @@
     </Reference>
     <Reference Include="Sandbox.Game">
       <HintPath>..\..\..\..\..\Apps\Steam\steamapps\common\SpaceEngineersDedicatedServer\DedicatedServer64\Sandbox.Game.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="SteamKit2, Version=2.1.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>$(Torch)\SteamKit2.dll</HintPath>
@@ -477,20 +478,28 @@
     <Reference Include="Torch, Culture=neutral, PublicKeyToken=null">
       <HintPath>$(Torch)\Torch.dll</HintPath>
       <SpecificVersion>false</SpecificVersion>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Torch.API, Culture=neutral, PublicKeyToken=null">
       <HintPath>$(Torch)\Torch.API.dll</HintPath>
       <SpecificVersion>false</SpecificVersion>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Torch.Server, Culture=neutral, PublicKeyToken=null">
       <HintPath>$(Torch)\Torch.Server.exe</HintPath>
       <SpecificVersion>false</SpecificVersion>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VRage">
       <HintPath>..\..\..\..\..\Apps\Steam\steamapps\common\SpaceEngineersDedicatedServer\DedicatedServer64\VRage.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="VRage.Game, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="VRage.Library, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+    <Reference Include="VRage.Game, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VRage.Library, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <Private>False</Private>
+    </Reference>
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -514,6 +523,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="build_release_zip.bat" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -528,6 +538,7 @@
     <PreBuildEvent>call "$(SolutionDir)verify_props.bat" "$(Torch)"</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>call "$(ProjectDir)deploy.bat" "$(TargetFileName)" "$(TargetDir)" "$(Torch)" "$(SolutionName)"</PostBuildEvent>
+    <PostBuildEvent>call "$(ProjectDir)deploy.bat" "$(TargetFileName)" "$(TargetDir)" "$(Torch)" "$(SolutionName)"
+call "$(ProjectDir)build_release_zip.bat" "$(TargetDir)" "CleanSpaceTorch.zip"</PostBuildEvent>
   </PropertyGroup>
 </Project>

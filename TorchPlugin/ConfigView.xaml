@@ -59,7 +59,7 @@
                     </ComboBox>
 
                     <TextBlock Text="On Match Action" Margin="5"/>
-                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
+                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedIndex="0" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
                         
                     </ComboBox>
                     <RichTextBox Height="242" Width="552">

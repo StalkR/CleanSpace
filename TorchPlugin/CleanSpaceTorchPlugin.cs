@@ -2,14 +2,11 @@
 
 using CleanSpace.Patch;
 using CleanSpaceShared.Networking;
+using CleanSpaceShared.Scanner;
 using HarmonyLib;
-using NLog;
-using Sandbox;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game;
-using Sandbox.Game.Multiplayer;
-using Sandbox.Game.World;
 using Shared.Config;
 using Shared.Events;
 using Shared.Logging;
@@ -17,9 +14,12 @@ using Shared.Patches;
 using Shared.Plugin;
 using Shared.Struct;
 using SteamKit2;
+using Steamworks;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Controls;
@@ -29,7 +29,6 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
-using Torch.Utils;
 using VRage.GameServices;
 using VRage.Network;
 using VRage.Utils;
@@ -102,7 +101,7 @@ namespace CleanSpace
             torch.GameStateChanged += Torch_GameStateChanged;
 
             initialized = true;
-            Init_Events();
+
         }
 
         private void Init_Events()
@@ -127,31 +126,48 @@ namespace CleanSpace
             PluginValidationResponse r = (PluginValidationResponse)args[0];
             string nonce = r.Nonce;
             ulong id = r.SenderId;
-            List<string> analysis = r.PluginHashes;
+            List<string> analysis = r.PluginHashes.Select((element)=>AssemblyScanner.UnscrambleSecureFingerprint(element, Encoding.UTF8.GetBytes(r.Nonce))).ToList();
             Log.Info($"Hash list for client {id}: " + analysis.Join());
             ValidationResultData validationResult = ValidationManager.Validate(id, r.Nonce, analysis);
             Log.Info($"Validation status for {id}: " + validationResult.Code.ToString());
 
-            switch (validationResult.Code)
+            if (validationResult.Code == ValidationResultCode.ALLOWED)
             {
-                case ValidationResultCode.ALLOWED:
-                        passed.Add(id);
-                        //ConnectedClientPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.OK);
-                    break;
-                
-                case ValidationResultCode.REJECTED_CLEANSPACE_HASH:
-
-                    break;
-
-                case ValidationResultCode.EXPIRED_TOKEN:
-                    
-                    break;
+                ConnectedClientDataMsg msg;
+                passed.Add(id);
+                if (heldConnections.ContainsKey(id) && heldConnections.TryRemove(id, out msg))
+                {
+                    Log.Info($"Sending join message to ID {id}");
+                    ConnectedClientPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, ref msg, new EndpointId(id));
+                }
+                else
+                {
+                    Log.Warning($"Client ID {id} passed checks but we didn't have a held connection. Hmm...");
+                }
+            }
+            else
+            {
+                ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.TicketCanceled);
+                string newNonce = ValidationManager.RegisterNonceForPlayer(id);
+                PluginValidationResult rs = new PluginValidationResult()
+                {
+                    Code = validationResult.Code,
+                    Success = validationResult.Success,
+                    PluginList = validationResult.PluginList,
+                    SenderId = MyGameService.OnlineUserId,
+                    TargetType = MessageTarget.Client,
+                    Target = id,
+                    UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Nonce = nonce
+                };
+                Log.Info($"Sending result packet containing information about rejection to ID {id}");
+                PacketRegistry.Send(rs, new EndpointId(id), newNonce, nonce);
             }
         }
 
-        private static List<ulong> pending = new List<ulong>();
         private static List<ulong> passed = new List<ulong>();
-        public static bool InitiateCleanSpaceCheck(ulong steamId)
+        private static ConcurrentDictionary<ulong, ConnectedClientDataMsg> heldConnections = new ConcurrentDictionary<ulong, ConnectedClientDataMsg>();
+        public static bool InitiateCleanSpaceCheck(ulong steamId, ConnectedClientDataMsg pausedMsg)
         {
             if (passed.Contains(steamId))
             {
@@ -159,7 +175,15 @@ namespace CleanSpace
                 return true;
             }
 
-            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId} .");
+         
+            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId}...");
+
+            if (heldConnections.ContainsKey(steamId))
+            {
+                Logger.Debug($"{CleanSpaceTorchPlugin.PluginName}: There was already a held connection for {steamId}. Discarding it and holding the new one.");
+                heldConnections.Remove(steamId);
+            }
+            heldConnections[steamId] = pausedMsg;
             string nonce = ValidationManager.RegisterNonceForPlayer(steamId);
             var message = new PluginValidationRequest
             {
@@ -173,26 +197,22 @@ namespace CleanSpace
             return false;
         }
         
- 
-        protected struct MyConnectedClientData
-        {
-            public string Name;
-
-            public string PlatformName;
-
-            public bool IsAdmin;
-
-            public bool IsProfiling;
-
-            public string ServiceName;
-        }
-       
 
         private void Torch_GameStateChanged(Sandbox.MySandboxGame game, TorchGameState newState)
         {
            if(newState == TorchGameState.Loaded)
             {
                 MyMultiplayer.Static.ClientJoined += Static_ClientJoined;
+                MyMultiplayer.Static.ClientLeft += Static_ClientLeft;               
+            }
+        }
+
+        private void Static_ClientLeft(ulong arg1, MyChatMemberStateChangeEnum arg2)
+        {
+            if (passed.Remove(arg1)){
+                if(heldConnections.ContainsKey(arg1)) 
+                    heldConnections.Remove(arg1);
+                Log.Info($"Cleaning up for ID {arg1}");                
             }
         }
 
@@ -222,7 +242,7 @@ namespace CleanSpace
                 case TorchSessionState.Loading:
                     PacketRegistry.Init(Log, PluginName);
                     RegisterPackets();
-
+                    Init_Events();
                     break;
 
                 case TorchSessionState.Loaded:

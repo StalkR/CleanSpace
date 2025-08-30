@@ -29,7 +29,7 @@ namespace CleanSpace
             InitializeComponent();
             DataContext = CleanSpaceTorchPlugin.Instance.Config;
             PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
-            PluginListModeCombo.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.ListMatchActions;
+       
         }
         private void PluginDropArea_DragOver(object sender, DragEventArgs e)
         {

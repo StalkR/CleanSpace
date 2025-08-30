@@ -32,8 +32,9 @@ namespace CleanSpace.Patch
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public static bool Prefix(ref ConnectedClientDataMsg msg, ulong steamId)
         {            
-            return CleanSpaceTorchPlugin.InitiateCleanSpaceCheck(steamId); ;
+            return CleanSpaceTorchPlugin.InitiateCleanSpaceCheck(steamId, msg);
         }
+
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         [HarmonyReversePatch]

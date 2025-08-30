@@ -658,6 +658,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="build_release_zip.bat" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -670,6 +671,7 @@
     <PreBuildEvent>call "$(SolutionDir)verify_props.bat" "$(Bin64)"</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>call "$(ProjectDir)deploy.bat" "$(TargetFileName)" "$(TargetDir)" "$(Bin64)"</PostBuildEvent>
+    <PostBuildEvent>call "$(ProjectDir)deploy.bat" "$(TargetFileName)" "$(TargetDir)" "$(Bin64)"
+call "$(ProjectDir)build_release_zip.bat" "$(TargetDir)" "CleanSpaceClient.zip"</PostBuildEvent>
   </PropertyGroup>
 </Project>

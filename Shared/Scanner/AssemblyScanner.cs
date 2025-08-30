@@ -117,6 +117,59 @@ namespace CleanSpaceShared.Scanner
                 var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
                 return Convert.ToBase64String(hash);
             }
-        }        
+        }
+
+        public static string UnscrambleSecureFingerprint(string encoded, byte[] secret)
+        {
+            byte[] encrypted = Convert.FromBase64String(encoded);
+            byte[] hash = new byte[encrypted.Length];
+            for (int i = 0; i < encrypted.Length; i++)
+                hash[i] = (byte)(encrypted[i] ^ secret[i % secret.Length]);
+            return Convert.ToBase64String(hash);
+        }
+
+        public static string GetSecureAssemblyFingerprint(Assembly assembly, byte[] secret)
+        {
+            var sb = new StringBuilder();
+            var name = assembly.GetName();
+            sb.AppendLine(name.Name);
+            sb.AppendLine(name.Version.ToString());
+            sb.AppendLine(BitConverter.ToString(name.GetPublicKeyToken() ?? new byte[0]));
+
+            var types = assembly.GetTypes().OrderBy(t => t.FullName);
+            foreach (var type in types)
+            {
+                sb.AppendLine(type.FullName);
+                sb.AppendLine(type.Attributes.ToString());
+                foreach (var field in type.GetFields().OrderBy(f => f.Name))
+                    sb.AppendLine($"{field.Name}:{field.FieldType}");
+
+                foreach (var method in type.GetMethods().OrderBy(m => m.Name))
+                {
+                    sb.AppendLine(method.ToString());
+                    var body = method.GetMethodBody();
+                    if (body != null)
+                    {
+                        var il = body.GetILAsByteArray();
+                        if (il != null)
+                            sb.AppendLine(BitConverter.ToString(il));
+                    }
+                }
+            }
+
+            byte[] hash;
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
+            }
+
+            byte[] encrypted = new byte[hash.Length];
+            for (int i = 0; i < hash.Length; i++)
+            {
+                encrypted[i] = (byte)(hash[i] ^ secret[i % secret.Length]);
+            }
+
+            return Convert.ToBase64String(encrypted);
+        }
     }
 }

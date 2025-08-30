@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Net;
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Shared.Config
@@ -88,6 +89,7 @@ namespace Shared.Config
             get => listMatchAction;
             set => SetValue(ref listMatchAction, value);
         }
+
     }
 }
 

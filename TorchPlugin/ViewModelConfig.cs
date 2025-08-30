@@ -27,7 +27,7 @@ namespace CleanSpace
         [XmlIgnore]
         public string[] PluginListTypes
         {
-            get { return Enum.GetNames(typeof(PluginListType)); }
+            get { return Enum.GetNames(typeof(PluginListType));}
         }
         [XmlIgnore]
         public string[] ListMatchActions
