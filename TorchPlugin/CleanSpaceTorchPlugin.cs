@@ -4,9 +4,12 @@ using CleanSpace.Patch;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
 using HarmonyLib;
+using Sandbox;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
+using Sandbox.Engine.Utils;
 using Sandbox.Game;
+using Sandbox.Game.Multiplayer;
 using Shared.Config;
 using Shared.Events;
 using Shared.Logging;
@@ -18,6 +21,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,10 +31,14 @@ using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
+using Torch.Server.Managers;
 using Torch.Session;
 using VRage.GameServices;
 using VRage.Network;
+using VRage.Replication;
 using VRage.Utils;
+using static Sandbox.ModAPI.MyModAPIHelper;
+using MyMultiplayer = Sandbox.Engine.Multiplayer.MyMultiplayer;
 
 namespace CleanSpace
 {
@@ -95,13 +103,26 @@ namespace CleanSpace
             {
                 Log.Info("Patches applied.");
             }
-            
+
+                   
             sessionManager = torch.Managers.GetManager<TorchSessionManager>();
             sessionManager.SessionStateChanged += SessionStateChanged;
             torch.GameStateChanged += Torch_GameStateChanged;
 
+
+            Log.Info($"Server group ID set to Clean Space information group ({Common.CleanSpaceGroupID}).");
+
+            Torch.Managers.GetManager<InstanceManager>().InstanceLoaded += CleanSpaceTorchPlugin_InstanceLoaded;
+           
             initialized = true;
             
+        }
+
+        private void CleanSpaceTorchPlugin_InstanceLoaded(Torch.Server.ViewModels.ConfigDedicatedViewModel obj)
+        {
+            MySandboxGame.ConfigDedicated.GroupID = Common.CleanSpaceGroupID;
+            var m = Torch.Managers.GetManager<InstanceManager>();
+            m.DedicatedConfig.GroupId = Common.CleanSpaceGroupID;
         }
 
         private void Init_Events()
@@ -145,7 +166,7 @@ namespace CleanSpace
                 }
             }
             else
-            {              
+            {             
                 string newNonce = ValidationManager.RegisterNonceForPlayer(id, true);
                 PluginValidationResult rs = new PluginValidationResult()
                 {
@@ -169,6 +190,17 @@ namespace CleanSpace
             await Task.Delay(1000);
             Log.Info($"Ticket cancelled for ID {id}.");
             ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.TicketCanceled);
+        }
+
+        public static async Task DelayedDisconnectWithGroupRedirect(ulong id)
+        {
+            await Task.Delay(10000);
+            ConnectedClientDataMsg h;
+            if(heldConnections.TryRemove(id, out h))
+            {
+                Common.Logger.Info($"No response from ID {id} [{h.Name ?? "?"}] (held connection still present). Attempting to direct to information group.");
+                ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.NotInGroup);
+            }           
         }
 
         private readonly static List<ulong> passed = new List<ulong>();
@@ -197,6 +229,7 @@ namespace CleanSpace
                 Nonce = nonce
             };
             PacketRegistry.Send(message, new EndpointId(steamId), nonce);
+            Task.Run(() => DelayedDisconnectWithGroupRedirect(steamId));
             return false;
         }
         
@@ -206,7 +239,8 @@ namespace CleanSpace
            if(newState == TorchGameState.Loaded)
             {
                 MyMultiplayer.Static.ClientJoined += Static_ClientJoined;
-                MyMultiplayer.Static.ClientLeft += Static_ClientLeft;               
+                MyMultiplayer.Static.ClientLeft += Static_ClientLeft;
+                
             }
         }
 
@@ -243,14 +277,14 @@ namespace CleanSpace
             switch (newstate)
             {
                 case TorchSessionState.Loading:
+                    
                     PacketRegistry.InstallHandler(Log, PluginName);
                     RegisterPackets();
                     Init_Events();
                     break;
 
                 case TorchSessionState.Loaded:
-                  
-                   
+                 
                     break;
              
                 case TorchSessionState.Unloading:

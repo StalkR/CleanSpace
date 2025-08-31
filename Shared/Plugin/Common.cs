@@ -18,6 +18,7 @@ namespace Shared.Plugin
         public static string PluginName;
         public static bool IsServer;
         private static string _instanceSecret;
+        public static ulong CleanSpaceGroupID => 103582791475284354;
         public static string InstanceSecret = _instanceSecret != null ? _instanceSecret :  (_instanceSecret = TokenUtility.GenerateToken(DateTime.UtcNow.ToLongTimeString(), DateTime.UtcNow.AddDays(1), "secret"));
         public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger)
         {

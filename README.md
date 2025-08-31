@@ -23,6 +23,7 @@ A list of these signatures is sent to a server upon requesting a Clean Space fro
 On the server side, Clean Space sits inbetween players attempting to connect to your server and adds an extra step to the process. During initial connection,
 Clean Space will ask the player's client for a list of signatures detected running within Space Engineer's memory space. It will compare the signatures provided by the client to
 a list of signatures maintained by the server's Clean Space plugin. Depending on how it is set up, Clean Space can then deny, allow, or log information about clients before the session is accepted and the world begins to load.
+![Active logs](ss2.png "Torch UI")
 
 ![Config Screen 1](ss5.png "Rejected")
 
@@ -32,12 +33,12 @@ No. Clean Space operates only within Space Engineer's memory region while runnin
 
 ## Do clients have to use the plugin?
 
-It depends. If you set up Clean Space to deny connections on match, then all of your clients will need the client side Clean Space plugin to connect. If they do not have clean space,
-then it will cancel their connection and display a 'Ticket Invalid' prompt on an attempted join. If you have Clean Space set up to allow clients regardless of matches, then Clean Space does not care whether or not a client has plugins, and will allow them regardless. 
+It depends. If you set up Clean Space to deny connections on match, then all of your players will need the client-side Clean Space plugin to connect.
+If they do not have clean space, then they will be disconnected and then directed to a steam group information page including information about Clean Space and where to get it.
+![Redirect](ss7.png "Redirect")
+![SteamPage](ss6.png "Steam Information Page")
 
-![Active logs](ss2.png "Torch UI")
-
-## What's stopping me from <X>?
+## What's stopping me from ...X?
 
 The code is open source, and if you feel like you can circumvent it you are welcome to try. If you manage to, please do share how ;). Otherwise, forging any part of a Clean Space
 request is difficult.  
