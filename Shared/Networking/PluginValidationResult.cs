@@ -20,9 +20,6 @@ namespace CleanSpaceShared.Networking
         public ValidationResultCode Code;
 
         [ProtoMember(8)]
-        public string Message;
-
-        [ProtoMember(9)]
         public List<string> PluginList;
 
         public override void ProcessClient<PluginValidationResult>(PluginValidationResult r)

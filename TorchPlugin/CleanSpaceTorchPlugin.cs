@@ -13,9 +13,6 @@ using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
 using Shared.Struct;
-using Shared.Util;
-using SteamKit2;
-using Steamworks;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,6 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 using Torch;
 using Torch.API;
@@ -126,7 +124,6 @@ namespace CleanSpace
             }
 
             PluginValidationResponse r = (PluginValidationResponse)args[0];
-            string nonce = r.Nonce;
             ulong id = r.SenderId;
             List<string> analysis = r.PluginHashes.Select((element)=>AssemblyScanner.UnscrambleSecureFingerprint(element, Encoding.UTF8.GetBytes(r.Nonce))).ToList();
             Log.Info($"Hash list for client {id}: " + analysis.Join());
@@ -148,9 +145,8 @@ namespace CleanSpace
                 }
             }
             else
-            {
-                ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.TicketCanceled);
-                string newNonce = ValidationManager.RegisterNonceForPlayer(id);
+            {              
+                string newNonce = ValidationManager.RegisterNonceForPlayer(id, true);
                 PluginValidationResult rs = new PluginValidationResult()
                 {
                     Code = validationResult.Code,
@@ -160,11 +156,19 @@ namespace CleanSpace
                     TargetType = MessageTarget.Client,
                     Target = id,
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Nonce = nonce
+                    Nonce = newNonce
                 };
-                Log.Info($"Sending result packet containing information about rejection to ID {id}");
-                PacketRegistry.Send(rs, new EndpointId(id), newNonce, nonce);
+                Log.Info($"Sending result packet containing information about rejection to ID {id} and scheduling a ticket cancellation for connection request.");
+                PacketRegistry.Send(rs, new EndpointId(id), newNonce);
+                Task.Run(() => DelayedDisconnect(id));
             }
+        }
+
+        public async Task DelayedDisconnect(ulong id)
+        {            
+            await Task.Delay(1000);
+            Log.Info($"Ticket cancelled for ID {id}.");
+            ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, id, JoinResult.TicketCanceled);
         }
 
         private readonly static List<ulong> passed = new List<ulong>();
@@ -281,8 +285,7 @@ namespace CleanSpace
             );
           
             PacketRegistry.Register<PluginValidationResult>(
-              112,
-              () => new ProtoPacketData<PluginValidationResult>(), SecretPacketFactory<PluginValidationResult>.handler<ProtoPacketData<PluginValidationResult>>
+              112,  () => new ProtoPacketData<PluginValidationResult>(), SecretPacketFactory<PluginValidationResult>.handler<ProtoPacketData<PluginValidationResult>>
             );
 
         }

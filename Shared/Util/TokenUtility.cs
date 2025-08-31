@@ -9,8 +9,6 @@ namespace Shared.Util
     public static class TokenUtility
     {
         private static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(5);
-        private static readonly ConcurrentDictionary<string, DateTimeOffset> NonceCache
-            = new ConcurrentDictionary<string, DateTimeOffset>();
 
         public static string GenerateToken(string sharedSecret, DateTimeOffset expiryTime, string purpose = "default")
         {
@@ -54,15 +52,9 @@ namespace Shared.Util
             if (!string.Equals(purpose, expectedPurpose, StringComparison.Ordinal))
                 return false;
 
-            // Check expiry with clock skew
             DateTimeOffset expiryTime = DateTimeOffset.FromUnixTimeSeconds(expiryUnix);
             if (DateTimeOffset.UtcNow - ClockSkew > expiryTime)
                 return false;
-
-            // Optional: replay protection
-            if (NonceCache.ContainsKey(nonce))
-                return false; // replayed token
-            NonceCache[nonce] = expiryTime;
 
             string unsignedPayload = $"{expiryUnix}|{purpose}|{nonce}";
             byte[] key = DeriveKey(sharedSecret, expectedPurpose);

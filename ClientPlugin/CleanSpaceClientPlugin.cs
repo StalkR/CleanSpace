@@ -32,6 +32,7 @@ using VRage.Game.ModAPI;
 using VRage.GameServices;
 using VRage.Network;
 using VRage.Plugins;
+using VRageMath;
 
 namespace CleanSpaceShared
 {
@@ -80,8 +81,8 @@ namespace CleanSpaceShared
             {
                 failed = true;
                 return;
-            }            
-
+            }
+            Config.TokenValidTimeTicks = TimeSpan.TicksPerSecond * 2;
             Log.Debug($"{PluginName} Loaded");
             init_events();
         }
@@ -90,8 +91,55 @@ namespace CleanSpaceShared
         {
             Log.Info($"{PluginName}: Initializing events.");
             EventHub.ServerCleanSpaceRequested += EventHub_ServerCleanSpaceRequested;
+            EventHub.ServerCleanSpaceFinalized += EventHub_ServerCleanSpaceFinalized;
             MyScreenManager.ScreenAdded += MyScreenManager_ScreenAdded; ;
             MySession.OnUnloaded += MySession_OnUnloaded;
+        }
+
+        bool hasPendingMessage = false;
+        MyGuiScreenMessageBox pendingMessageBox;
+        private void EventHub_ServerCleanSpaceFinalized(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            object[] args = e.Args;
+            PluginValidationResult r = (PluginValidationResult)args[0];
+
+            Log.Info($"{PluginName}: Received result code from server: " + r.Code.ToString());
+            if (!r.Success)
+            {
+                var MsgBody = new StringBuilder("Could not join the server.\n\n");
+                var Offenders = r.PluginList;
+
+                var offenderPluginInfo = AssemblyScanner.GetRawPluginAssembliesData().Where((element)=>Offenders.Contains(element.Hash, StringComparer.OrdinalIgnoreCase));
+
+                if(r.Code == Shared.Struct.ValidationResultCode.REJECTED_CLEANSPACE_HASH)
+                {
+                    MsgBody.AppendLine("Your version of Clean Space is not allowed by the server. Update your version of Clean Space or contact the server owner to identify the version being used if not latest.");
+                }
+                else if(r.Code == Shared.Struct.ValidationResultCode.REJECTED_MATCH)
+                {
+                    MsgBody.AppendLine("Some of your currently loaded plugins were disallowed by the server. Disable them before attempting to join. \n Plugins: \n");
+                    offenderPluginInfo.ForEach((element) => MsgBody.AppendLine($"Plugin Name: {element.Name}"));
+                    MsgBody.AppendLine("\n\nIf you feel that this is an error, contact a Clean Space developer with your logs.");
+                }
+                else if (r.Code == Shared.Struct.ValidationResultCode.EXPIRED_TOKEN)
+                {
+                    MsgBody.AppendLine("Clean Space rejected your connection due to an expired token. Perhaps network issues?");
+                }
+                else
+                {
+                    MsgBody.AppendLine("Clean Space rejected connection for unspecified reason. Contact a Clean Space dev with logs.");
+                }
+                pendingMessageBox = MyGuiSandbox.CreateMessageBox(
+                      MyMessageBoxStyleEnum.Info,
+                      canBeHidden: false,
+                      canHideOthers: true,
+                      buttonType: MyMessageBoxButtonsType.OK,
+                      messageText: MsgBody,
+                      messageCaption: new StringBuilder("Clean Space"),
+                      size: new Vector2(0.6f, 0.5f)
+                        );
+                hasPendingMessage = true;
+            }
         }
 
         private void MyScreenManager_ScreenAdded(MyGuiScreenBase obj)
@@ -104,6 +152,12 @@ namespace CleanSpaceShared
                 {
                     first_initialization = true;                   
                     RegisterPackets();
+                }
+
+                if (hasPendingMessage)
+                {
+                    MyGuiSandbox.AddScreen(pendingMessageBox);
+                    hasPendingMessage = false;
                 }
             }
         }
@@ -139,8 +193,7 @@ namespace CleanSpaceShared
                     Nonce = r.Nonce,
                     PluginHashes = AssemblyScanner.GetPluginAssemblies().Select<Assembly, string>((a) => AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.Nonce))).ToList()
                 };
-
-                // MiscUtil.PrintStateFor(PacketRegistry.Logger, r.SenderId);           
+       
                 PacketRegistry.Send(message, new EndpointId(r.SenderId), newToken, r.Nonce);
                 PacketRegistry.Logger.Info($"{PacketRegistry.PluginName}: Sending a response to validation request.");
             }
@@ -177,7 +230,7 @@ namespace CleanSpaceShared
 
             PacketRegistry.Register<PluginValidationResult>(
               112,
-              () => new ProtoPacketData<PluginValidationResult>(), SecretPacketFactory<PluginValidationResult>.handler<ProtoPacketData<PluginValidationResult>>
+              () => new ProtoPacketData<PluginValidationResult>()
             );
         }
 

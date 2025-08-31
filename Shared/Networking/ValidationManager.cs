@@ -77,7 +77,7 @@ namespace CleanSpace
             pruneIntervalCounter++;
             if (pruneIntervalCounter % pruneInterval == 0)
                 PruneStaleEntries();
-            var token = Shared.Util.TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddTicks((long)Shared.Plugin.Common.Config.TokenValidTimeTicks));
+            var token = Shared.Util.TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddSeconds(5));
             return RegisterNonceForPlayer(steamId, token, force);
         }
 

@@ -23,6 +23,23 @@ namespace CleanSpaceShared.Scanner
                 .Where((asm)=> IsValidPlugin(asm)).ToList();
         }
 
+
+        public struct PluginAssemblyInfo
+        {
+            public string Name;
+            public string Hash;
+            public Assembly Assembly;
+        }
+
+        public static List<PluginAssemblyInfo> GetRawPluginAssembliesData()
+        {
+            List<PluginAssemblyInfo> result = new List<PluginAssemblyInfo>();
+            List<Assembly> assemblies = new List<Assembly>();
+            var validAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where((asm) => IsValidPlugin(asm)).ToList();
+            return validAssemblies.Select((asm) => new PluginAssemblyInfo() { Assembly = asm, Hash = GetAssemblyFingerprint(asm), Name = asm.GetName().Name }).ToList();
+        }
+
         public static Assembly GetAssembly(string path)
         {
             if (File.Exists(path))
