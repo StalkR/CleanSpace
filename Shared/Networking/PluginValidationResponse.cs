@@ -1,7 +1,5 @@
-﻿using CleanSpace;
-using ProtoBuf;
+﻿using ProtoBuf;
 using Shared.Events;
-using Shared.Struct;
 using System.Collections.Generic;
 namespace CleanSpaceShared.Networking
 {
@@ -13,21 +11,15 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessClient<PluginValidationResponse>(PluginValidationResponse r)
         {
-            Shared.Plugin.Common.Logger.Info("Test");
+            Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
+            throw new System.SystemException($"{PacketRegistry.PluginName} encountered a critical issue it could not recover from. Please contact a developer with logs.");
         }
 
         public override void ProcessServer<PluginValidationResponse>(PluginValidationResponse r)
         {
-            Shared.Plugin.Common.Logger.Info("Test");
             string token = r.Nonce;
-            if (token == null)
-            {
+            if (token == null){
                 Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
-                return;
-            }
-            if (r == null)
-            {
-                Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, But the packet was null when delivered to handler.");
                 return;
             }
 

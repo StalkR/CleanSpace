@@ -149,7 +149,7 @@ namespace CleanSpaceShared.Networking
         private static Type _NetworkMessageDelegateType = null;
 
         public static Type NetworkMessageDelegateType = _NetworkMessageDelegateType ?? (_NetworkMessageDelegateType = NetworkReaderType.Assembly.GetType("Sandbox.Engine.Networking.NetworkMessageDelegate"));
-        public static void Init(IPluginLogger log, string pluginName)
+        public static void InstallHandler(IPluginLogger log, string pluginName)
         {
           
             PluginName = pluginName;

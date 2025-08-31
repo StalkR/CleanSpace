@@ -36,7 +36,6 @@ namespace Shared.Config
         private long tokenValidTime;
         private bool enabled = true;
         private bool detectCodeChanges = true;
-        private string secret = null;
         private ObservableCollection<PluginListEntry> analyzedPlugins = new ObservableCollection<PluginListEntry>();
         private ObservableCollection<string> selectedPlugins = new ObservableCollection<string>();
         PluginListType pluginListType = PluginListType.Whitelist;
@@ -52,12 +51,6 @@ namespace Shared.Config
         {
             get => detectCodeChanges;
             set => SetValue(ref detectCodeChanges, value);
-        }
-
-        public string Secret 
-        {
-            get => secret;
-            set => SetValue(ref secret, value);
         }
 
         public long TokenValidTimeTicks

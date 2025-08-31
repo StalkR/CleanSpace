@@ -7,6 +7,7 @@ using Shared.Logging;
 using Shared.Struct;
 using Shared.Util;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace CleanSpace
         {
             public ulong sender;
             public string nonce;
-            public long time;
+            public DateTime time;
             public override bool Equals(object obj)
             {
                 if (!(obj is ExptectedNonce))
@@ -37,7 +38,7 @@ namespace CleanSpace
             public override int GetHashCode() => nonce.GetHashCode();
         }       
         
-        private readonly static Dictionary<ulong, ExptectedNonce> expectedNonces = new Dictionary<ulong, ExptectedNonce>();
+        private readonly static ConcurrentDictionary<ulong, ExptectedNonce> expectedNonces = new ConcurrentDictionary<ulong, ExptectedNonce>();
 
         public static bool NonceExistsForPlayer(ulong steamId)
         {  return expectedNonces.ContainsKey(steamId);  }
@@ -60,17 +61,24 @@ namespace CleanSpace
             {
                 nonce = nonce,             
                 sender = steamId,
-                time = DateTime.UtcNow.Ticks
+                time = DateTime.UtcNow
             };
             Shared.Plugin.Common.Logger.Debug($"Registered nonce {nonce} for ID {steamId}");
             return nonce;
         }
 
-        private static string Secret => Shared.Plugin.Common.Plugin.Config.Secret;
-        public static string RegisterNonceForPlayer(ulong steamId)
+        private static string Secret => Shared.Plugin.Common.InstanceSecret;
+
+        // Every thousand or so nonces we cleanup. Its not a big deal, they aren't very big and aren't going to pile up too much. Maybe.
+        private static int pruneIntervalCounter = 0;
+        private static int pruneInterval = 1000;
+        public static string RegisterNonceForPlayer(ulong steamId, bool force = false)
         {           
+            pruneIntervalCounter++;
+            if (pruneIntervalCounter % pruneInterval == 0)
+                PruneStaleEntries();
             var token = Shared.Util.TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddTicks((long)Shared.Plugin.Common.Config.TokenValidTimeTicks));
-            return RegisterNonceForPlayer(steamId, token);
+            return RegisterNonceForPlayer(steamId, token, force);
         }
 
         public static ValidationResultCode ValidateToken(ulong steamId, string receivedNonce, bool removeOnValidate = true)
@@ -91,13 +99,20 @@ namespace CleanSpace
         public static void LogValidationResult(ulong steamId, ValidationResultData data)
         {
             string successString = (data.Success ? "SUCCESS" : "FAILURE");
-            string pluginListString = (data.PluginList.Count() > 0 ? $" Hashes: {data.PluginList.ToString()}" : "NO PLUGINS");
+            string pluginListString = (data.PluginList.Count() > 0 ? $" Hashes: {data.PluginList.ToString()}" : "No Conflicts");
             Log.Info($"{Shared.Plugin.Common.PluginName}: Validation for {steamId} result {successString} with {data.Code.ToString()} {pluginListString}");
         }
 
         public static void PruneStaleEntries()
         {
-            
+            var gen = expectedNonces.GetEnumerator();
+            while (gen.MoveNext())
+            {
+                ulong k = gen.Current.Key;
+                var d = gen.Current.Value.time;
+                if (DateTime.UtcNow.CompareTo(d.AddMinutes(1)) > 0)
+                    expectedNonces.Remove(k);
+            }
         }
 
         public static List<string> GetCleanSpaceHashList()
@@ -125,61 +140,38 @@ namespace CleanSpace
             var currentPluginList = Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins;
             var selectedPluginHashes = currentPluginList.Where(e => e.IsSelected).Select(e => e.Hash).ToList();
 
-            var conflictingHashes = selectedPluginHashes.Intersect(hashList, StringComparer.OrdinalIgnoreCase).ToList();
+
+            var listType = Shared.Plugin.Common.Plugin.Config.PluginListType;
+
+            var conflictingHashes = listType == PluginListType.Blacklist  
+                // If it's a blacklist, then we are interested in which plugins the client has that are PRESENT in the list.
+                ? selectedPluginHashes.Where(e => !cleanSpaceHashPresence.Contains(e, StringComparer.OrdinalIgnoreCase)).Intersect(hashList, StringComparer.OrdinalIgnoreCase).ToList()
+                // If it's a whitelist, then we are interested in the plugins that are NOT PRESENT in the list.
+                : hashList.Where(e => !cleanSpaceHashPresence.Contains(e, StringComparer.OrdinalIgnoreCase)).Except(selectedPluginHashes, StringComparer.OrdinalIgnoreCase).ToList();
+
             var action = Shared.Plugin.Common.Plugin.Config.ListMatchAction;
 
             if (cleanSpaceHashPresence.Count == 0)
             {
                 if (action == ListMatchAction.Deny)
-                { 
-                    return new ValidationResultData()
-                    {
-                        Code = ValidationResultCode.REJECTED_CLEANSPACE_HASH,
-                        PluginList = null,
-                        Success = false
-                    };
-                }               
+                    return new ValidationResultData() { Code = ValidationResultCode.REJECTED_CLEANSPACE_HASH, PluginList = null, Success = false };
             }
 
             ValidationResultData result;
             if (conflictingHashes.Count > 0)
             {
-                if(action == ListMatchAction.Accept)
-                {
-                    result = new ValidationResultData()
-                    {
-                        Code = ValidationResultCode.ALLOWED,
-                        PluginList = conflictingHashes,
-                        Success = true
-                    };
-                }
+                if (action == ListMatchAction.Accept)
+                    result = new ValidationResultData() { Code = ValidationResultCode.ALLOWED, PluginList = conflictingHashes, Success = true };
                 else
-                {
-                    result = new ValidationResultData()
-                    {
-                        Code = ValidationResultCode.REJECTED_MATCH,
-                        PluginList = conflictingHashes,
-                        Success = false
-                    };
-                }                   
+                    result = new ValidationResultData() { Code = ValidationResultCode.REJECTED_MATCH, PluginList = conflictingHashes, Success = false };
             }
             else
             {
-
-                result = new ValidationResultData()
-                {
-                    Code = ValidationResultCode.ALLOWED,
-                    PluginList = conflictingHashes,
-                    Success = true
-                };
-
+                result = new ValidationResultData() { Code = ValidationResultCode.ALLOWED, PluginList = conflictingHashes, Success = true };
             }
 
             LogValidationResult(steamId, result);
             return result;
-        }
-
-        
-    
+        }            
     }
 }

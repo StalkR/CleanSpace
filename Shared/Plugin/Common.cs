@@ -3,6 +3,7 @@ using System.IO;
 using Shared.Config;
 using Shared.Logging;
 using Shared.Patches;
+using Shared.Util;
 
 namespace Shared.Plugin
 {
@@ -16,6 +17,7 @@ namespace Shared.Plugin
         public static string DataDir;
         public static string PluginName;
         public static bool IsServer;
+        public static string InstanceSecret = TokenUtility.GenerateToken(DateTime.UtcNow.ToLongTimeString(), DateTime.UtcNow, "secret");
         public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger)
         {
             Plugin = plugin;

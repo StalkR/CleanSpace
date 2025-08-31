@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using Shared.Events;
 using Shared.Struct;
 using System;
 using System.Collections.Generic;
@@ -26,14 +27,15 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessClient<PluginValidationResult>(PluginValidationResult r)
         {
-           
+            EventHub.OnServerCleanSpaceFinalized(this, r.Target, r);
         }
 
         public override void ProcessServer<PluginValidationResult>(PluginValidationResult r)
         {
-           
+            Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
+            throw new System.SystemException($"{PacketRegistry.PluginName} encountered a critical issue it could not recover from. Please contact a developer with logs.");
         }
     }
         
 
-    }
+}

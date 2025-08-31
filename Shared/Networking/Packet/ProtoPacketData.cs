@@ -83,7 +83,7 @@ namespace CleanSpaceShared.Networking
             }
             catch (Exception e) {
 
-                throw new InvalidOperationException("Failed to unwrap message with key.");
+                throw new InvalidOperationException("Failed to unwrap message with key: " + e.Message);
             }
             return result;
         }

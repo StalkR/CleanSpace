@@ -45,10 +45,6 @@ namespace Shared.Patches
                     return false;
                 }
             }
-            else
-            {
-                log.Warning("Conflicting code change detection is disabled in plugin configuration");
-            }
 
             log.Debug("Applying Harmony patches");
             try

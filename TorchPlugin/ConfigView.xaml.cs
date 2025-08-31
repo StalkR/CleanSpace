@@ -29,8 +29,12 @@ namespace CleanSpace
             InitializeComponent();
             DataContext = CleanSpaceTorchPlugin.Instance.Config;
             PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
-       
+
+            Instance.PluginListModeCombo.SelectedIndex = System.Enum.GetNames(typeof(PluginListType)).ToList().IndexOf(CleanSpaceTorchPlugin.Instance.Config.PluginListType.ToString());
+            Instance.PluginMatchActionCombo.SelectedIndex = System.Enum.GetNames(typeof(ListMatchAction)).ToList().IndexOf(CleanSpaceTorchPlugin.Instance.Config.ListMatchAction.ToString());
         }
+
+
         private void PluginDropArea_DragOver(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -192,6 +196,23 @@ namespace CleanSpace
         private void SeedPasswordResetBtn_Click(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+           // MessageBox.Show("farts");
+            //  Common.Plugin.Config.AnalyzedPlugins.
+        }
+
+        private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void CheckBox_TargetUpdated(object sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+
+            MessageBox.Show("farts");
         }
     }
 }

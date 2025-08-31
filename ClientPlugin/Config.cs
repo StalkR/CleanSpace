@@ -11,14 +11,6 @@ using VRageMath;
 
 namespace CleanSpaceShared
 {
-    public enum ExampleEnum
-    {
-        FirstAlpha,
-        SecondBeta,
-        ThirdGamma,
-        AndTheDelta,
-        Epsilon
-    }
 
     public class Config : INotifyPropertyChanged
     {
@@ -29,7 +21,7 @@ namespace CleanSpaceShared
         private int integer = 2;
         private float number = 0.1f;
         private string text = "Default Text";
-        private ExampleEnum dropdown = ExampleEnum.FirstAlpha;
+
         private Color color = Color.Cyan;
         private Color colorWithAlpha = new Color(0.8f, 0.6f, 0.2f, 0.5f);
         private Binding keybind = new Binding(MyKeys.None);
@@ -71,12 +63,6 @@ namespace CleanSpaceShared
             set => SetField(ref text, value);
         }
 
-        [Dropdown(description: "Dropdown Tooltip")]
-        public ExampleEnum Dropdown
-        {
-            get => dropdown;
-            set => SetField(ref dropdown, value);
-        }
 
         [Color(description: "RGB color")]
         public Color Color

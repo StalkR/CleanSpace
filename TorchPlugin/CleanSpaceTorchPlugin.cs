@@ -13,6 +13,7 @@ using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
 using Shared.Struct;
+using Shared.Util;
 using SteamKit2;
 using Steamworks;
 using System;
@@ -51,6 +52,7 @@ namespace CleanSpace
         public IPluginConfig Config => config?.Data;
         private PersistentConfig<ViewModelConfig> config;
         private static readonly string ConfigFileName = $"{PluginName}.cfg";
+        private static readonly string InstanceSecret = Shared.Plugin.Common.InstanceSecret;
 
         // ReSharper disable once UnusedMember.Global
         public UserControl GetControl() => control ?? (control = new ConfigView());
@@ -101,12 +103,12 @@ namespace CleanSpace
             torch.GameStateChanged += Torch_GameStateChanged;
 
             initialized = true;
-
+            
         }
 
         private void Init_Events()
         {
-            EventHub.ClientCleanSpaceResponded += EventHub_ClientCleanSpaceResponded;
+            EventHub.ClientCleanSpaceResponded += EventHub_ClientCleanSpaceResponded;            
         }
 
         private void EventHub_ClientCleanSpaceResponded(object sender, CleanSpaceTargetedEventArgs e)
@@ -165,26 +167,23 @@ namespace CleanSpace
             }
         }
 
-        private static List<ulong> passed = new List<ulong>();
-        private static ConcurrentDictionary<ulong, ConnectedClientDataMsg> heldConnections = new ConcurrentDictionary<ulong, ConnectedClientDataMsg>();
+        private readonly static List<ulong> passed = new List<ulong>();
+        private readonly static ConcurrentDictionary<ulong, ConnectedClientDataMsg> heldConnections = new ConcurrentDictionary<ulong, ConnectedClientDataMsg>();
         public static bool InitiateCleanSpaceCheck(ulong steamId, ConnectedClientDataMsg pausedMsg)
         {
-            if (passed.Contains(steamId))
-            {
-                // TODO: Send a message congratulating the user for not cheating.
+            if (passed.Contains(steamId) || !Common.Config.Enabled)
                 return true;
-            }
-
          
-            MyLog.Default.WriteLineAndConsole($"{CleanSpaceTorchPlugin.PluginName}: Initiating clean space request for player {steamId}...");
+            Common.Logger.Info($"{PluginName}: Initiating clean space request for player {steamId}...");
 
             if (heldConnections.ContainsKey(steamId))
             {
-                Logger.Debug($"{CleanSpaceTorchPlugin.PluginName}: There was already a held connection for {steamId}. Discarding it and holding the new one.");
+                Logger.Debug($"{PluginName}: A held connection request for {steamId} already exists. Discarding it and using the new one.");
                 heldConnections.Remove(steamId);
             }
             heldConnections[steamId] = pausedMsg;
-            string nonce = ValidationManager.RegisterNonceForPlayer(steamId);
+
+            string nonce = ValidationManager.RegisterNonceForPlayer(steamId, true);
             var message = new PluginValidationRequest
             {
                 SenderId = MyGameService.OnlineUserId,
@@ -240,7 +239,7 @@ namespace CleanSpace
             switch (newstate)
             {
                 case TorchSessionState.Loading:
-                    PacketRegistry.Init(Log, PluginName);
+                    PacketRegistry.InstallHandler(Log, PluginName);
                     RegisterPackets();
                     Init_Events();
                     break;

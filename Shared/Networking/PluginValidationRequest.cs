@@ -23,8 +23,8 @@ namespace CleanSpaceShared.Networking
         {          
             string token = r.Nonce;            
             if (token == null)
-            {                
-                PacketRegistry.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
+            {
+                Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
                 return;
             }
             EventHub.OnServerCleanSpaceRequested(this, r.Target, r);
@@ -32,8 +32,8 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessServer<PluginValidationRequest>(PluginValidationRequest r)
         {
-            PacketRegistry.Logger.Error($"{PacketRegistry.PluginName}: Received something that I shouldn'tve.");
-            throw new System.SystemException("Something is wrong. Closing down");
+            Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
+            throw new System.SystemException($"{PacketRegistry.PluginName} encountered a critical issue it could not recover from. Please contact a developer with logs.");
         }
     }
 

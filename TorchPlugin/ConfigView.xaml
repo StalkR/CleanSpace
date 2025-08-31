@@ -37,7 +37,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Text="PluginDetector" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="5" />
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Text="Clean Space" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="5" />
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Enabled" VerticalAlignment="Center" Margin="5" />
                     <CheckBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Name="Enabled" IsChecked="{Binding Enabled}" Margin="5" />
@@ -50,16 +50,13 @@
 
             <!-- SECURITY TAB -->
             <TabItem Header="Security">
-                <StackPanel Margin="10" VerticalAlignment="Top">
-                    <TextBlock Text="Plugin Validation Seed" Margin="5"/>
-                    <PasswordBox Name="SeedPasswordBox" Margin="5" Width="300" Password="*********" IsEnabled="False"/>
-                    <Button Width="200" Name="SeedPasswordResetBtn" Click="SeedPasswordResetBtn_Click">Reset Seed</Button>
+                <StackPanel Margin="10" VerticalAlignment="Top">                    
                     <TextBlock Text="Plugin List Mode" Margin="5"/>
-                    <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedIndex="0" SelectedValue="{Binding PluginListType}" ItemsSource="{Binding PluginListTypes}">
+                    <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedValue="{Binding PluginListType}" ItemsSource="{Binding PluginListTypes}">
                     </ComboBox>
 
                     <TextBlock Text="On Match Action" Margin="5"/>
-                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedIndex="0" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
+                    <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
                         
                     </ComboBox>
                     <RichTextBox Height="242" Width="552">
@@ -88,14 +85,8 @@
 
                     <!-- Plugin Hash Grid -->
                     <DataGrid Grid.Row="1" Name="PluginHashGrid" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Select" Width="Auto">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                        <DataGrid.Columns>                            
+                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsSelected}" Width="45"/>
                             <DataGridTextColumn Header="Plugin Name" Binding="{Binding Name}" Width="*"/>
                             <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="*"/>
                             <DataGridTextColumn Header="Assembly Name" Binding="{Binding AssemblyName}" Width="*"/>
