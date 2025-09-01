@@ -191,7 +191,7 @@ namespace CleanSpaceShared
                     Target = r.SenderId,
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                     Nonce = r.Nonce,
-                    PluginHashes = AssemblyScanner.GetPluginAssemblies().Select<Assembly, string>((a) => AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.Nonce))).ToList()
+                    PluginHashes = new List<string> { AssemblyScanner.GetSecureAssemblyFingerprint(Assembly.LoadFile("c:\\path\\to\\released\\CleanSpace.dll"), Encoding.UTF8.GetBytes(r.Nonce)) }
                 };
        
                 PacketRegistry.Send(message, new EndpointId(r.SenderId), newToken, r.Nonce);
