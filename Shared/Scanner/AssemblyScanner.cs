@@ -11,26 +11,22 @@ using VRage.Plugins;
 
 namespace CleanSpaceShared.Scanner
 {    
-    public class AssemblyScanner
+    internal sealed class AssemblyScanner
     {
         public static IPluginLogger Logger;
         public static bool IsUnsigned(Assembly a) => a.GetName().GetPublicKeyToken()?.Length == 0;
-
         public static List<Assembly> GetPluginAssemblies()
         {
             List<Assembly> assemblies = new List<Assembly>();
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Where((asm)=> IsValidPlugin(asm)).ToList();
         }
-
-
-        public struct PluginAssemblyInfo
+        internal struct PluginAssemblyInfo
         {
             public string Name;
             public string Hash;
             public Assembly Assembly;
         }
-
         public static List<PluginAssemblyInfo> GetRawPluginAssembliesData()
         {
             List<PluginAssemblyInfo> result = new List<PluginAssemblyInfo>();
@@ -52,7 +48,6 @@ namespace CleanSpaceShared.Scanner
 
         public static string GetOwnHash() => GetAssemblyFingerprint(GetOwnAssembly());
         public static Assembly GetOwnAssembly() => Assembly.GetExecutingAssembly();
-
         public static bool IsValidPlugin(Assembly assembly)
         {
             if (assembly.FullName.Contains("Sandbox.Game, Version")) return false;

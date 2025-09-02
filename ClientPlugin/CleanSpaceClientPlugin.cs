@@ -82,7 +82,7 @@ namespace CleanSpaceShared
                 failed = true;
                 return;
             }
-            Config.TokenValidTimeTicks = TimeSpan.TicksPerSecond * 2;
+            Config.TokenValidTimeSeconds = TimeSpan.TicksPerSecond * 2;
             Log.Debug($"{PluginName} Loaded");
             init_events();
         }
@@ -147,7 +147,7 @@ namespace CleanSpaceShared
             if (obj is MyGuiScreenMainMenuBase)
             {
                 Log.Info($"{PluginName}: Menu screen reached. Re-registering handlers.");
-                PacketRegistry.InstallHandler(Log, PluginName);
+                PacketRegistry.InstallHandler();
                 if (!first_initialization)
                 {
                     first_initialization = true;                   

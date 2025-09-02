@@ -53,7 +53,7 @@ namespace Shared.Config
             set => SetValue(ref detectCodeChanges, value);
         }
 
-        public long TokenValidTimeTicks
+        public long TokenValidTimeSeconds
         { 
             get => tokenValidTime; 
             set => SetValue(ref tokenValidTime, value); 

@@ -1,18 +1,10 @@
-﻿using CleanSpaceShared;
-using CleanSpaceShared.Networking;
-using HarmonyLib;
+﻿using HarmonyLib;
 using Sandbox.Engine.Multiplayer;
-using Sandbox.Engine.Networking;
-using Sandbox.Game.Multiplayer;
-using Sandbox.Game.World;
+using Shared.Events;
+using Shared.Plugin;
 using System;
 using System.Reflection;
-using System.Windows.Documents;
-using Torch;
-using VRage;
-using VRage.GameServices;
 using VRage.Network;
-using VRage.Utils;
 
 namespace CleanSpace.Patch
 {
@@ -27,20 +19,17 @@ namespace CleanSpace.Patch
             return AccessTools.Method(type, "OnConnectedClient");
         }
 
-        // Prefix executes *before* the original method
-        // Returning false = skip original
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public static bool Prefix(ref ConnectedClientDataMsg msg, ulong steamId)
-        {            
-            return CleanSpaceTorchPlugin.InitiateCleanSpaceCheck(steamId, msg);
+        {
+            EventHub.OnClientConnected(typeof(ConnectedClientPatch), msg, steamId);
+            return !Common.Plugin.Config.Enabled;
         }
-
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         [HarmonyReversePatch]
         public static void CallPrivateMethod(MyDedicatedServerBase instance, ref ConnectedClientDataMsg msg, EndpointId playerId)
         {
-            // This method body will be replaced by the original private method's IL
             throw new NotImplementedException("This method should be replaced by Harmony!");
         }
     }

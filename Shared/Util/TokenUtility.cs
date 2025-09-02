@@ -84,10 +84,17 @@ namespace Shared.Util
             return true;
         }
 
-        private static string SignPayload(string payload, byte[] key)
+        public static string SignPayload(string payload, byte[] key)
         {
             var hmac = new HMACSHA512(key);
             byte[] signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+            return Convert.ToBase64String(signature);
+        }
+
+        public static string SignPayload(byte[] payload, byte[] key)
+        {
+            var hmac = new HMACSHA512(key);
+            byte[] signature = hmac.ComputeHash(payload);
             return Convert.ToBase64String(signature);
         }
 

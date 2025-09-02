@@ -18,7 +18,8 @@ namespace CleanSpaceShared.Networking
     [ProtoContract]
     public class PluginValidationRequest : MessageBase
     {
-                
+        public string attestationSignature;
+        public byte[] attestationChallenge;
         public override void ProcessClient<PluginValidationRequest>(PluginValidationRequest r)
         {          
             string token = r.Nonce;            

@@ -12,7 +12,7 @@ namespace Shared.Config
 
         // Server Plugin
         bool DetectCodeChanges { get; set; }
-        long TokenValidTimeTicks { get; set; }
+        long TokenValidTimeSeconds { get; set; }
 
         ObservableCollection<PluginListEntry> AnalyzedPlugins { get; set; }
         ObservableCollection<string> SelectedPlugins   { get; set; }

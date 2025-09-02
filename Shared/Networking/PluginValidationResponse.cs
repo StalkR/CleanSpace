@@ -8,6 +8,7 @@ namespace CleanSpaceShared.Networking
     {
         [ProtoMember(7)]
         public List<string> PluginHashes;
+        public string attestationResponse;
 
         public override void ProcessClient<PluginValidationResponse>(PluginValidationResponse r)
         {
@@ -23,8 +24,6 @@ namespace CleanSpaceShared.Networking
                 return;
             }
 
-            var steamId = Sandbox.Engine.Networking.MyGameService.OnlineUserId;     
-            Shared.Plugin.Common.Logger.Info($"Client ID {r.SenderId} responded with hash list. Processing...");
             EventHub.OnClientCleanSpaceResponded(this, r.SenderId, r);
         }
     }

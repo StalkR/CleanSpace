@@ -4,6 +4,7 @@ using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
 using Shared.Logging;
+using Shared.Plugin;
 using Shared.Util;
 using System;
 using System.Collections.Generic;
@@ -92,15 +93,15 @@ namespace CleanSpaceShared.Networking
 
     public static class PacketRegistry
     {
-        public static bool IsServer => Shared.Plugin.Common.IsServer;
+        private static bool IsServer => Shared.Plugin.Common.IsServer;
         public struct PacketInfo
         {            
             public Func<IProtoPacketData> Factory;
             public Action<IProtoPacketData, EndpointId> Handler;
         }
 
-        public static string PluginName;
-        public static IPluginLogger Logger => Shared.Plugin.Common.Logger;
+        public static string PluginName => Common.PluginName;
+        public static IPluginLogger Logger => Common.Logger;
 
         private const byte CHANNEL = 225;
 
@@ -135,7 +136,7 @@ namespace CleanSpaceShared.Networking
             Logger.Debug($"{PluginName}: Sent message id {envelope.PacketId} with token length {envelope.Key.Length}, payload length {envelope.Payload.Length} and total length {np.Data.Size} to destination {recipient}.");
         }
 
-        public static ushort GetPacketId<T>() where T : MessageBase
+        internal static ushort GetPacketId<T>() where T : MessageBase
         {
             if (typeToId.TryGetValue(typeof(T), out var id))
                 return id;
@@ -149,14 +150,11 @@ namespace CleanSpaceShared.Networking
         private static Type _NetworkMessageDelegateType = null;
 
         public static Type NetworkMessageDelegateType = _NetworkMessageDelegateType ?? (_NetworkMessageDelegateType = NetworkReaderType.Assembly.GetType("Sandbox.Engine.Networking.NetworkMessageDelegate"));
-        public static void InstallHandler(IPluginLogger log, string pluginName)
-        {
-          
-            PluginName = pluginName;
+        public static void InstallHandler()
+        {  
 
             if (NetworkReaderType == null)
                 throw new Exception("Could not find MyNetworkReader type");
-
            
             var handlerMethod = typeof(PacketRegistry).GetMethod(nameof(OnPacketReceived), BindingFlags.Static | BindingFlags.NonPublic);
             if (handlerMethod == null)
@@ -168,7 +166,7 @@ namespace CleanSpaceShared.Networking
         }
 
 
-        static MyPacketDescriptor PullDescriptorFromGamePool()
+        private static MyPacketDescriptor PullDescriptorFromGamePool()
         {
             Type t = typeof(MyNetworkWriter);        
             FieldInfo f = t.GetField("m_descriptorPool", BindingFlags.NonPublic | BindingFlags.Static);
@@ -182,7 +180,7 @@ namespace CleanSpaceShared.Networking
             return pool.Get();
         }
 
-        static MyPacketDescriptor GetPacketDescriptor(EndpointId userId, MyP2PMessageEnum msgType, int channel)
+        private static MyPacketDescriptor GetPacketDescriptor(EndpointId userId, MyP2PMessageEnum msgType, int channel)
         {
             MyPacketDescriptor myPacketDescriptor = PullDescriptorFromGamePool();
             myPacketDescriptor.MsgType = msgType;
@@ -203,7 +201,7 @@ namespace CleanSpaceShared.Networking
         }
 
 
-        private static void RegisterHandlerOn(int channel, MethodInfo handler, Action<ulong> disconnectPeerOnError = null)
+        public static void RegisterHandlerOn(int channel, MethodInfo handler, Action<ulong> disconnectPeerOnError = null)
         {
             if (NetworkReaderType == null)
                 throw new Exception("Could not find MyNetworkReader type");
@@ -227,7 +225,7 @@ namespace CleanSpaceShared.Networking
             Logger.Info($"{PluginName}: Packet handler registered on channel {channel}");
         }
 
-        private static void ClearHandlerOn(int channel)
+        public static void ClearHandlerOn(int channel)
         {
             if (NetworkReaderType == null)
                 throw new Exception("Could not find MyNetworkReader type");
@@ -238,15 +236,16 @@ namespace CleanSpaceShared.Networking
             Logger.Info($"{PluginName}: Packet handler cleared for channel {CHANNEL}");
         }
 
+
         private static void OnPacketReceived(MyPacket packet)
         {
             try
             {
                 Logger.Debug($"{PluginName}: OnPacketReceived started for packet from {packet.Sender.Id.Value} received.");
-
                 var stream = packet.ByteStream;
                 var sender = packet.Sender.Id;
                 var receivedTime = packet.ReceivedTime;
+
                 //stream.Position = 10;
                 int remaining = (int)(stream.Length - stream.Position);
 
@@ -307,18 +306,18 @@ namespace CleanSpaceShared.Networking
         {
             const string TargetType = "Sandbox.Engine.Networking.MyNetworkReader";
 
-            // Fast path
+            // Fast path, the one we all know and love.
             var networkingAssembly = typeof(MyMultiplayer).Assembly;
             var type = networkingAssembly.GetType(TargetType);
             if (type != null) return type;
 
-            // Slow path
+            // Slow path, in case keen changes something.
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 type = asm.GetType(TargetType);
                 if (type != null)
                 {
-                    MyLog.Default.WriteLine($"Found MyNetworkReader in: {asm.FullName}");
+                    Logger.Warning($"Found MyNetworkReader in: {asm.FullName}. Hey. I had to do this the slow way. Let CS Dev know something has changed.");
                     return type;
                 }
             }

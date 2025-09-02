@@ -35,7 +35,7 @@ namespace CleanSpace
             get { return Enum.GetNames(typeof(ListMatchAction)); }
         }
 
-        public long TokenValidTimeTicks { get => tokenValidTimeTicks; set => SetValue(ref tokenValidTimeTicks, value); }
+        public long TokenValidTimeSeconds { get => tokenValidTimeTicks; set => SetValue(ref tokenValidTimeTicks, value); }
 
         [Display(Order = 1, GroupName = "General", Name = "Enable plugin", Description = "Enable the plugin")]
         public bool Enabled

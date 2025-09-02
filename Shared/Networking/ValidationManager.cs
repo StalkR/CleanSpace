@@ -1,44 +1,37 @@
-﻿using CleanSpaceShared;
-using CleanSpaceShared.Networking;
-using HarmonyLib;
-using Sandbox.Engine.Multiplayer;
-using Sandbox.Game.Multiplayer;
+﻿using Shared.Events;
 using Shared.Logging;
 using Shared.Struct;
 using Shared.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using VRage.Network;
-using VRage.Utils;
 
 namespace CleanSpace
 {
+    public struct PendingNonce
+    {
+        public ulong sender;
+        public string nonce;
+        public DateTime time;
+        public override bool Equals(object obj)
+        {
+            if (!(obj is PendingNonce))
+                return false;
+
+            PendingNonce mys = (PendingNonce)obj;
+            return (nonce == mys.nonce);
+        }
+
+        public override int GetHashCode() => nonce.GetHashCode();
+    }
+
     public static class ValidationManager
     {
         public static IPluginLogger Log;
-        struct ExptectedNonce
-        {
-            public ulong sender;
-            public string nonce;
-            public DateTime time;
-            public override bool Equals(object obj)
-            {
-                if (!(obj is ExptectedNonce))
-                    return false;
-
-                ExptectedNonce mys = (ExptectedNonce)obj;
-                return (nonce == mys.nonce);
-            }
-
-            public override int GetHashCode() => nonce.GetHashCode();
-        }       
+              
         
-        private readonly static ConcurrentDictionary<ulong, ExptectedNonce> expectedNonces = new ConcurrentDictionary<ulong, ExptectedNonce>();
+        private readonly static ConcurrentDictionary<ulong, PendingNonce> expectedNonces = new ConcurrentDictionary<ulong, PendingNonce>();
 
         public static bool NonceExistsForPlayer(ulong steamId)
         {  return expectedNonces.ContainsKey(steamId);  }
@@ -57,13 +50,8 @@ namespace CleanSpace
             if(!force && NonceExistsForPlayer(steamId)) 
                 return null;
             
-            expectedNonces[steamId] = new ExptectedNonce
-            {
-                nonce = nonce,             
-                sender = steamId,
-                time = DateTime.UtcNow
-            };
-            Shared.Plugin.Common.Logger.Debug($"Registered nonce {nonce} for ID {steamId}");
+            expectedNonces[steamId] = new PendingNonce { nonce = nonce, sender = steamId, time = DateTime.UtcNow };
+            EventHub.OnNonceRegistered(typeof(ValidationManager), steamId, expectedNonces[steamId]);
             return nonce;
         }
 
@@ -77,7 +65,7 @@ namespace CleanSpace
             pruneIntervalCounter++;
             if (pruneIntervalCounter % pruneInterval == 0)
                 PruneStaleEntries();
-            var token = Shared.Util.TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddSeconds(5));
+            var token = TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddSeconds(Shared.Plugin.Common.Config.TokenValidTimeSeconds));
             return RegisterNonceForPlayer(steamId, token, force);
         }
 
@@ -88,12 +76,23 @@ namespace CleanSpace
             if (!TokenUtility.IsTokenValid(receivedNonce, Secret)) return ValidationResultCode.EXPIRED_TOKEN;     
             if (NonceValidForPlayer(steamId, receivedNonce))
             {
-                if (removeOnValidate) {
-                    expectedNonces.Remove(steamId);
-                }
+                if (removeOnValidate)
+                    RemoveNonceFromId(steamId);
+                  
                 return ValidationResultCode.VALID_TOKEN;
             }
             else return ValidationResultCode.INVALID_TOKEN;             
+        }
+
+        private static bool RemoveNonceFromId(ulong steamId, bool pruned = false)
+        {
+            PendingNonce r;
+            if (expectedNonces.TryRemove(steamId, out r)) { 
+                if (!pruned)
+                    EventHub.OnNonceRemoved(typeof(ValidationManager), steamId, r);
+                return true;
+            }
+            return false;
         }
 
         public static void LogValidationResult(ulong steamId, ValidationResultData data)
@@ -111,7 +110,7 @@ namespace CleanSpace
                 ulong k = gen.Current.Key;
                 var d = gen.Current.Value.time;
                 if (DateTime.UtcNow.CompareTo(d.AddMinutes(1)) > 0)
-                    expectedNonces.Remove(k);
+                    RemoveNonceFromId(k, true);
             }
         }
 
