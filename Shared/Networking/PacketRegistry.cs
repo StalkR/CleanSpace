@@ -24,7 +24,7 @@ namespace CleanSpaceShared.Networking
 
     public static class SecretPacketFactory<T> where T : MessageBase
     {
-        public static bool IsServer => Shared.Plugin.Common.IsServer;
+        public static bool IsServer => Common.IsServer;
         public static void handler<U>(IProtoPacketData packet, EndpointId sender) where U : ProtoPacketData<T>
         {
             T message;
@@ -33,26 +33,22 @@ namespace CleanSpaceShared.Networking
                 if (ValidationManager.NonceExistsForPlayer(sender.Value))
                 {
                     var n = ValidationManager.GetNonceForPlayer(sender.Value);
-                    Shared.Plugin.Common.Logger.Debug($"Exist LEN: {n.Length}");
+                    Common.Logger.Debug($"Exist LEN: {n.Length}");
                     message = ((U)packet).GetMessage(n);
 
                     if (IsServer)
-                    {
                         message.ProcessServer(message);
-                    }
                     else
-                    {
-                        message.ProcessClient(message);
-                    }
+                        message.ProcessClient(message);                   
                 }
                 else
                 {
-                    Shared.Plugin.Common.Logger.Warning($"Received a packet from {sender.Value} with an unexpected nonce. Ignoring.");
+                    Common.Logger.Warning($"Received a packet from {sender.Value} with an unexpected nonce. Ignoring.");
                 }
             }
             catch (Exception ex)
             {
-                Shared.Plugin.Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value} with key. {ex.Message}");
+                Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value} with key. {ex.Message}");
                 return;
             }
 
@@ -241,6 +237,7 @@ namespace CleanSpaceShared.Networking
         {
             try
             {
+             
                 Logger.Debug($"{PluginName}: OnPacketReceived started for packet from {packet.Sender.Id.Value} received.");
                 var stream = packet.ByteStream;
                 var sender = packet.Sender.Id;

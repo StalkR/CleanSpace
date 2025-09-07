@@ -12,7 +12,9 @@ namespace Shared.Struct
         UNEXPECTED_TOKEN = -3,
         MALFORMED_TOKEN = -4,
         REJECTED_MATCH = -5,   
-        REJECTED_CLEANSPACE_HASH = -6
+        REJECTED_CLEANSPACE_HASH = -6,
+        FAILED_COMMUNICATION = -99
+
     }
     public struct ValidationResultData
     {

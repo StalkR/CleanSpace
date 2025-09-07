@@ -1,9 +1,7 @@
-﻿using NLog;
-using ProtoBuf;
+﻿using ProtoBuf;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using VRage;
 
 namespace CleanSpaceShared.Networking

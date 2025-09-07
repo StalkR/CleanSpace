@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Shared.Plugin;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -15,23 +16,109 @@ namespace TorchPlugin.Hasher
     internal sealed class HasherFactory
     {
 
-        private static String[] slots = { "  using (var sha25 = SHA256.Create())\r\n            sb.AppendLine(Convert.ToBase64String(sha25.ComputeHash(raw)));", "foreach (var mod in asm.GetModules())\r\n        {\r\n            sb.AppendLine(mod.ScopeName);\r\n            sb.AppendLine(mod.MDStreamVersion.ToString());\r\n        }", "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n        {\r\n            foreach (var method in type.GetMethods(BindingFlags.Public |\r\n                                                   BindingFlags.NonPublic |\r\n                                                   BindingFlags.Static |\r\n                                                   BindingFlags.Instance))\r\n            {\r\n                sb.AppendLine(method.ToString());\r\n                var body = method.GetMethodBody();\r\n                if (body != null)\r\n                    sb.AppendLine(BitConverter.ToString(body.GetILAsByteArray() ?? Array.Empty<byte>()));\r\n                IntPtr fnPtr = method.MethodHandle.GetFunctionPointer();\r\n                sb.AppendLine(fnPtr.ToString(\"X\"));\r\n            }\r\n        }" };
-        private static String hasherTemplate(string secretSlot, string slot1, string slot2, string slot3) => "using System;\r\nusing System.IO;\r\nusing System.Linq;\r\nusing System.Reflection;\r\nusing System.Security.Cryptography;\r\nusing System.Text;\r\npublic static class Hasher\r\n{\r\n    public static byte[] GetAssemblyBytes(Assembly asm)\r\n    {\r\n        string location = asm.Location;\r\n        if (!string.IsNullOrEmpty(location) && File.Exists(location))\r\n            return File.ReadAllBytes(location);\r\n\r\n        using (var stream = asm.ManifestModule.FullyQualifiedName != null\r\n            ? File.OpenRead(asm.ManifestModule.FullyQualifiedName)\r\n            : asm.ManifestModule.Assembly.GetManifestResourceStream(asm.ManifestModule.ScopeName))\r\n        {\r\n            if (stream == null)\r\n                return Array.Empty<byte>();\r\n            using (var ms = new MemoryStream())\r\n            {\r\n                stream.CopyTo(ms);\r\n                return ms.ToArray();\r\n            }\r\n        }\r\n    }\r\n\r\n    public static string ComputeHash()\r\n    {\r\n        byte[] secret = Encoding.UTF8.GetBytes(\"" + secretSlot + "\");\r\n\r\n        var asm = Assembly.GetExecutingAssembly();\r\n        var sb = new StringBuilder();\r\n        var raw = GetAssemblyBytes(asm);\r\n        " + slot1 + "\r\n        " + slot2 + "\r\n        " + slot3 + "\r\n\r\n        byte[] hash;\r\n        using (SHA256 sha256 = SHA256.Create())\r\n        {\r\n            hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));\r\n        }\r\n\r\n        byte[] encrypted = new byte[hash.Length];\r\n        for (int i = 0; i < hash.Length; i++)\r\n        {\r\n            encrypted[i] = (byte)(hash[i] ^ secret[i % secret.Length]);\r\n        }\r\n\r\n        return Convert.ToBase64String(encrypted);\r\n    }\r\n}\r\n";
+        private static readonly string[] Slots = new[]{
+                "foreach (var mod in asm.GetModules())\r\n" +
+                "{\r\n" +
+                "    sb.AppendLine(mod.ScopeName);\r\n" +
+                "    sb.AppendLine(mod.MDStreamVersion.ToString());\r\n" +
+                "}",
+
+                "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n" +
+                "{\r\n" +
+                "    foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))\r\n" +
+                "    {\r\n" +
+                "        sb.AppendLine(method.ToString());\r\n" +
+                "        var body = method.GetMethodBody();\r\n" +
+                "        if (body != null)\r\n" +
+                "            sb.AppendLine(BitConverter.ToString(body.GetILAsByteArray() ?? Array.Empty<byte>()));\r\n" +
+                "    }\r\n" +
+                "}",
+
+                "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n" +
+                "{\r\n" +
+                "    foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))\r\n" +
+                "    {\r\n" +
+                "        sb.AppendLine($\"{field.FieldType} {field.Name}\");\r\n" +
+                "    }\r\n" +
+                "}",
+
+                "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n" +
+                "{\r\n" +
+                "    foreach (var attr in type.GetCustomAttributes(false))\r\n" +
+                "    {\r\n" +
+                "        sb.AppendLine(attr.GetType().FullName);\r\n" +
+                "    }\r\n" +
+                "}",
+
+                "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n" +
+                "{\r\n" +
+                "    foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))\r\n" +
+                "    {\r\n" +
+                "        sb.AppendLine($\"{prop.PropertyType} {prop.Name}\");\r\n" +
+                "        foreach (var accessor in prop.GetAccessors(true))\r\n" +
+                "            sb.AppendLine(accessor.ToString());\r\n" +
+                "    }\r\n" +
+                "}"
+            };
+
+       private static string HasherTemplate(string secretSlot, string slot1, string slot2, string slot3) =>
+             @"using System;
+            using System.Linq;
+            using System.Reflection;
+            using System.Security.Cryptography;
+            using System.Text;
+
+            public static class Hasher
+            {
+                public static string ComputeHash()
+                {
+                    byte[] secret = Encoding.UTF8.GetBytes(""" + secretSlot + @""");
+
+                    var asm = Assembly.GetExecutingAssembly();
+                    var sb = new StringBuilder();
+
+                    " + slot1 + @"
+                    " + slot2 + @"
+                    " + slot3 + @"
+
+                    byte[] hash;
+                    using (SHA256 sha256 = SHA256.Create())
+                    {
+                        hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
+                    }
+
+                    byte[] encrypted = new byte[hash.Length];
+                    for (int i = 0; i < hash.Length; i++)
+                    {
+                        encrypted[i] = (byte)(hash[i] ^ secret[i % secret.Length]);
+                    }
+
+                    return Convert.ToBase64String(encrypted);
+                }
+            }";
         private static String MakeHasher(string secret)
         {
-            slots.ShuffleList();
-            return hasherTemplate(secret, slots[0], slots[1], slots[2]);
+            Slots.ShuffleList();
+            return HasherTemplate(secret, Slots[0], Slots[1], Slots[2]);
         }
         private static byte[] CompileHasherAssembly(string sourceCode)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-            var refs = new[] {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.Runtime.GCSettings).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(SHA256).Assembly.Location),
-        };
-
+            /*var refs = AppDomain.CurrentDomain
+                .GetAssemblies()
+                .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+                .GroupBy(a => a.GetName().Name)             
+                .Select(g => g.First())  
+                .Select(a => MetadataReference.CreateFromFile(a.Location))
+                .ToList();*/
+            var refs = new[]
+            {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),          // System.Private.CoreLib
+                MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),      // System.Linq
+                MetadataReference.CreateFromFile(typeof(Assembly).Assembly.Location),        // System.Reflection
+                MetadataReference.CreateFromFile(typeof(SHA256).Assembly.Location),          // System.Security.Cryptography.Algorithms
+                MetadataReference.CreateFromFile(typeof(StringBuilder).Assembly.Location),   // System.Text
+            };
             var compilation = CSharpCompilation.Create(
                 assemblyName: "DynamicHasher_" + Guid.NewGuid().ToString("N"),
                 syntaxTrees: new[] { syntaxTree },

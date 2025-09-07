@@ -4,15 +4,11 @@ using Sandbox.Engine.Networking;
 using Sandbox.Game;
 using Shared.Plugin;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using VRage.Game;
 using VRage.Library.Utils;
-using VRage.Network;
-using Sandbox.Engine.Utils;
 namespace TorchPlugin.Patch
 {
     [HarmonyPatch(typeof(MyDedicatedServer), "SendGameTagsToSteam")]

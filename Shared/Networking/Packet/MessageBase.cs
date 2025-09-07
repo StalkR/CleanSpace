@@ -10,6 +10,8 @@ namespace CleanSpaceShared.Networking
     }
 
     [ProtoContract]
+    [ProtoInclude(107, typeof(CleanSpaceHelloPacket))]
+    [ProtoInclude(108, typeof(CleanSpaceChatterPacket))]
     [ProtoInclude(110, typeof(PluginValidationRequest))]
     [ProtoInclude(111, typeof(PluginValidationResponse))]
     [ProtoInclude(112, typeof(PluginValidationResult))]

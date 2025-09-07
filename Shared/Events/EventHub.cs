@@ -1,5 +1,6 @@
 
 
+using CleanSpaceShared.Networking;
 using Sandbox.Engine.Networking;
 using System;
 using VRage.Network;
@@ -12,6 +13,7 @@ namespace Shared.Events
         CLIENT_CONNECTED = 10,
         REGISTERED_NONCE = 40,
         REMOVED_NONCE = 41,
+        CS_HELLO = 90,
         SERVER_CS_REQUESTED = 100,
         CLIENT_CS_RESPONDED = 101,
         SERVER_CS_FINALIZED = 102,
@@ -59,6 +61,10 @@ namespace Shared.Events
         public static event EventHandler<CleanSpaceEventArgs> ClientConnected;
         public static event EventHandler<CleanSpaceEventArgs> NonceRegistered;
         public static event EventHandler<CleanSpaceEventArgs> ConnectionStateChanged;
+
+        public static event EventHandler<CleanSpaceTargetedEventArgs> CleanSpaceHelloReceived;
+        public static event EventHandler<CleanSpaceTargetedEventArgs> CleanSpaceChatterReceived;
+
         public static event EventHandler<CleanSpaceTargetedEventArgs> ServerCleanSpaceRequested;
         public static event EventHandler<CleanSpaceTargetedEventArgs> ClientCleanSpaceResponded;
         public static event EventHandler<CleanSpaceTargetedEventArgs> ServerCleanSpaceFinalized;
@@ -71,6 +77,9 @@ namespace Shared.Events
           => ServerConnectionAccepted?.Invoke(sender, new CleanSpaceClientSessionEventArgs(CleanSpaceEvent.SERVER_CS_ACCEPTED, IsServer, steamId, args));
         public static void OnServerConnectionRejected(object sender, ulong steamId, params object[] args)
           => ServerConnectionRejected?.Invoke(sender, new CleanSpaceClientSessionEventArgs(CleanSpaceEvent.SERVER_CS_REJECTED, IsServer, steamId, args));
+
+        public static void OnCleanSpaceHelloReceived(object sender, ulong source, ulong target, params object[] args)
+          => CleanSpaceHelloReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_HELLO, IsServer, source, target, args));
 
         public static void OnServerCleanSpaceRequested(object sender, ulong steamId, params object[] args)
             => ServerCleanSpaceRequested?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.SERVER_CS_REQUESTED, IsServer, steamId, MyID ?? 0, args));        
@@ -88,9 +97,12 @@ namespace Shared.Events
         => NonceRegistered?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.REMOVED_NONCE, IsServer, steamId, e ));
 
         internal static void OnClientConnected(object sender, ConnectedClientDataMsg msg, ulong steamId)
-          => ClientConnected?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.REMOVED_NONCE, IsServer, steamId, msg ));
+          => ClientConnected?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.CLIENT_CONNECTED, IsServer, steamId, msg ));
 
         public static void OnConnectionStateChanged(object sender, ulong steamId, int new_state)
             => ConnectionStateChanged?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.CLIENT_CONNECTION_STATE_CHANGED, IsServer, steamId, new_state));
+
+        public static void OnCleanSpaceChatterReceived(object sender, ulong source, ulong target, params object[] args)
+         => CleanSpaceChatterReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_HELLO, IsServer, source, target, args));
     }   
 }

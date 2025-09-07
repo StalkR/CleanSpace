@@ -19,6 +19,7 @@ using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
 using TorchPlugin.Tracker;
+using TorchPlugin.Util;
 using VRage.GameServices;
 using VRage.Utils;
 
@@ -59,6 +60,7 @@ namespace CleanSpace
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
+            if (initialized) return;
             sessionManager = torch.Managers.GetManager<TorchSessionManager>();
             ConfigView.Log = Log;
             ValidationManager.Log = Log;
@@ -86,13 +88,13 @@ namespace CleanSpace
             else
             {
                 Log.Info("Patches applied.");
-            }
-            
+            }            
          
-
             cleanSpaceClientManager = new ClientSessionManager();
             sessionManager.SessionStateChanged += SessionStateChanged;
-     
+
+            SessionParameterFactory.RegisterProviders();
+
             initialized = true;
             
         }
@@ -112,8 +114,11 @@ namespace CleanSpace
             
         }
 
+        private bool events_initialized = false;
         private void Init_Events()
         {
+            if(events_initialized) return;
+            events_initialized = true;
             cleanSpaceClientManager.Init_Events();
         }
   
@@ -146,6 +151,13 @@ namespace CleanSpace
 
         private void RegisterPackets()
         {
+            PacketRegistry.Register<CleanSpaceHelloPacket>(
+              107, () => new ProtoPacketData<CleanSpaceHelloPacket>(), SecretPacketFactory<CleanSpaceHelloPacket>.handler<ProtoPacketData<CleanSpaceHelloPacket>>
+            );
+
+            PacketRegistry.Register < CleanSpaceChatterPacket>(
+              108, () => new ProtoPacketData<CleanSpaceChatterPacket>(), SecretPacketFactory<CleanSpaceChatterPacket>.handler<ProtoPacketData<CleanSpaceChatterPacket>>
+            );
 
             PacketRegistry.Register<PluginValidationRequest>(
               110, () => new ProtoPacketData<PluginValidationRequest>(), SecretPacketFactory<PluginValidationRequest>.handler<ProtoPacketData<PluginValidationRequest>>

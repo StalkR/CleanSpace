@@ -18,16 +18,11 @@ namespace CleanSpaceShared.Networking
     [ProtoContract]
     public class PluginValidationRequest : MessageBase
     {
-        public string attestationSignature;
+        public byte[] attestationSignature;
         public byte[] attestationChallenge;
         public override void ProcessClient<PluginValidationRequest>(PluginValidationRequest r)
         {          
-            string token = r.Nonce;            
-            if (token == null)
-            {
-                Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
-                return;
-            }
+            MiscUtil.BasicReceivingPacketChecks(r);
             EventHub.OnServerCleanSpaceRequested(this, r.Target, r);
         }
 

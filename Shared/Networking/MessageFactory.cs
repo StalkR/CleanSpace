@@ -1,14 +1,8 @@
-using CleanSpaceShared.Scanner;
 using CleanSpaceShared.Util;
 using ProtoBuf;
-using Shared.Util;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using VRage.Collections;
-using VRage.Game.VisualScripting;
-using VRage.Scripting;
 
 namespace CleanSpaceShared.Networking
 {

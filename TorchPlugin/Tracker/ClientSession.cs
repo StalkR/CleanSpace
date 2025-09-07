@@ -2,9 +2,12 @@
 using CleanSpace.Patch;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
+using Newtonsoft.Json.Converters;
 using NLog.Fluent;
+using ProtoBuf;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
+using Sandbox.Game.Multiplayer;
 using Shared.Config;
 using Shared.Events;
 using Shared.Hasher;
@@ -15,10 +18,14 @@ using Shared.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using TorchPlugin.Hasher;
+using TorchPlugin.Util;
+using VRage;
 using VRage.GameServices;
 using VRage.Network;
 
@@ -29,6 +36,7 @@ namespace TorchPlugin.Tracker
         PENDING,
         VALIDATION_REQUESTED,
         AWAITING_VALIDATION,
+ 
         VALIDATION_RESPONDED,
         VALIDATION_FINALIZED,
         CONNECTED
@@ -46,7 +54,7 @@ namespace TorchPlugin.Tracker
         ValidationResultData? validationResultData;
         
         byte[] clientHasherBytes;
-        string hasherSignature;
+        byte[] hasherSignature;
 
         private CS_CLIENT_STATE connectionState;
         CS_CLIENT_STATE ConnectionState
@@ -58,8 +66,10 @@ namespace TorchPlugin.Tracker
                 connectionState = value;
             }
         }
-        readonly byte[] clientSalt = Encoding.UTF8.GetBytes(Common.InstanceSecret).Span(new Random().Next(0, (Encoding.UTF8.GetBytes(Common.InstanceSecret).Length - 16)), 16).ToArray();
-        string clientPendingNonce;
+        SessionParameters chatterParameters;
+        SessionParameters sessionParameters;
+        readonly byte[] clientSalt;
+        string currentClientNonce;
         string serverPendingNonce;
         string lastServerNonce;
         string lastClientNonce;
@@ -68,12 +78,27 @@ namespace TorchPlugin.Tracker
 
         bool events_initialized = false;
         private ClientSessionManager Manager => ClientSessionManager.Instance;
-        public ClientSession(ConnectedClientDataMsg initialMsg)
+        public ClientSession(ulong steamId, ConnectedClientDataMsg initialMsg)
         {
+            var secretBytes = Encoding.UTF8.GetBytes(Common.InstanceSecret);
+            int startIndex;
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                byte[] buf = new byte[4];
+                rng.GetBytes(buf);
+                startIndex = BitConverter.ToInt32(buf, 0) & int.MaxValue;
+                startIndex %= (secretBytes.Length - 16);
+            }
+            clientSalt = new byte[16];
+            Array.Copy(secretBytes, startIndex, clientSalt, 0, 16);
+
+            this.steamId = steamId;
             this.initialMsg = initialMsg;
             this.connectionState = CS_CLIENT_STATE.PENDING;
             this.sessionStartTime = DateTime.UtcNow;
             EventHub.ClientCleanSpaceResponded += EventHub_ClientCleanSpaceResponded;
+            EventHub.CleanSpaceHelloReceived += EventHub_CleanSpaceHelloReceived;
+            EventHub.CleanSpaceChatterReceived += EventHub_CleanSpaceChatterReceived;
             this.clientHasherBytes = HasherFactory.GetNewHasherWithSecret(Common.InstanceSecret);
 
             MyP2PSessionState state = new MyP2PSessionState();
@@ -83,13 +108,13 @@ namespace TorchPlugin.Tracker
             }
             else
             {
-                Log.Debug($"Failed to get a valid remote address for client {steamId}. Disconnecting.");
+                Common.Logger.Debug($"Failed to get a valid remote address for client {steamId}. Disconnecting.");
                 Task.Run(()=>DelayedDisconnect());
                 return;
             }
-               
 
-            Log.Debug($"Hasher generated for client with id {steamId}. Doing quick test. ");
+
+            Common.Logger.Debug($"Hasher generated for client with id {steamId}. Doing quick test. ");
 
             try
             {
@@ -97,49 +122,89 @@ namespace TorchPlugin.Tracker
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to generate hasher for client with id {steamId}. " + ex.Message);
-                throw new Exception("Security error");
+                Common.Logger.Error($"Failed to generate hasher for client with id {steamId}. " + ex.Message);
+                throw new Exception("Security error: " + ex.Message);
             }
-            Log.Debug($"Hasher validated for client with id {steamId}. Signing.");
-            this.hasherSignature = TokenUtility.SignPayload(clientHasherBytes, clientSalt);
+
+            Common.Logger.Debug($"Hasher validated for client with id {steamId}. Signing.");
+            this.hasherSignature = TokenUtility.SignPayloadBytes(clientHasherBytes, clientSalt);
+        }
+
+        private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            ulong senderId = e.Source;
+            if (senderId != this.steamId)
+                return;
+
+            object[] args = e.Args;
+            try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1); }
+            catch (Exception ex)
+            {
+                Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling client chatter." + ex.Message);
+                return;
+            }
+            CleanSpaceChatterPacket r = (CleanSpaceChatterPacket)args[0];
+            ReceiveChatter(r);
+        }
+
+        private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            ulong senderId = e.Source;
+            if (senderId != this.steamId)
+                return;
+
+            CleanSpaceHelloPacket r = (CleanSpaceHelloPacket)e.Args[0];
+            ReceiveHello(r);
         }
 
         private void EventHub_ClientCleanSpaceResponded(object sender, CleanSpaceTargetedEventArgs e)
-        {          
-            if(e.Args.Length < 2)
+        {
+            ulong senderId = e.Source;
+            if (senderId != this.steamId)
+                return;
+            object[] args = e.Args;
+            try { MiscUtil.ArgsChecks<PluginValidationResponse>(e, 1); }
+            catch (Exception ex)
             {
+                Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling client chatter." + ex.Message);
+                RejectConnection();
                 return;
             }
-       
-            ulong senderId = (ulong)e.Args[0];
-            if(senderId == this.steamId)
+
+            PluginValidationResponse r = (PluginValidationResponse)e.Args[0];
+
+            this.ConnectionState = CS_CLIENT_STATE.VALIDATION_RESPONDED;
+            if (!TokenUtility.SignPayloadBytes(clientHasherBytes, clientSalt).Equals(this.hasherSignature))
             {
-                PluginValidationResponse r = (PluginValidationResponse)e.Args[1];
-
-                List<string> realAnalysis = r.PluginHashes;
-
-                if (!TokenUtility.SignPayload(clientHasherBytes, clientSalt).Equals(this.hasherSignature))
-                {
-                    throw new Exception("Security violation during clean space response.");
-                }
-
-                List<string> transformedAnalysis = realAnalysis.Select(x => HasherRunner.ExecuteRunner(this.clientHasherBytes, (string)x)).ToList();
-
-                List<string> analysis = r.PluginHashes.Select((element) => AssemblyScanner.UnscrambleSecureFingerprint(element, Encoding.UTF8.GetBytes(r.Nonce))).ToList();
-                this.validationResultData = ValidationManager.Validate(senderId, r.Nonce, analysis);
-                this.ConnectionState = CS_CLIENT_STATE.VALIDATION_FINALIZED;
-
-                if (this.validationResultData?.Code == ValidationResultCode.ALLOWED)
-                {
-                    this.AcceptConnection();               
-                }
-                else
-                {
-                    this.RejectConnection();
-                }
+                Common.Logger.Error($"Security violation during clean space response from ID {steamId}. Hasher integrity compromised.");
+                RejectConnection();
+                return;
             }
 
+            string securedCleanSpaceSignature = r.attestationResponse;
+            List<string> transformedCleanSpaceSignatures = ValidationManager.GetCleanSpaceHashList().Select((element) => HasherRunner.ExecuteRunner(this.clientHasherBytes, (string)element)).ToList();
 
+            if (!transformedCleanSpaceSignatures.Contains(securedCleanSpaceSignature))
+            {
+                Common.Logger.Warning($"Client {steamId} failed attestation.");
+                RejectConnection();
+                return;
+            }
+
+            List<string> pluginList = r.PluginHashes;
+            List<string> analysis = pluginList.Select((element) => AssemblyScanner.UnscrambleSecureFingerprint(element, Encoding.UTF8.GetBytes(r.Nonce))).ToList();
+
+            this.validationResultData = ValidationManager.Validate(senderId, r.Nonce, analysis);
+            this.ConnectionState = CS_CLIENT_STATE.VALIDATION_FINALIZED;
+
+            if (this.validationResultData?.Code == ValidationResultCode.ALLOWED)
+            {
+                this.AcceptConnection();               
+            }
+            else
+            {
+                this.RejectConnection();
+            }
 
         }
 
@@ -149,85 +214,268 @@ namespace TorchPlugin.Tracker
             {
                 connectionState = CS_CLIENT_STATE.CONNECTED; 
                 EventHub.OnServerConnectionAccepted(this, steamId, validationResultData);
-                Log.Info($"Sending join message to ID {steamId}");
+                Common.Logger.Info($"Sending join message to ID {steamId}");
                 ConnectedClientPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, ref initialMsg, initialMsg.ClientId);
             }
         }
 
-      
+
+        // We have room to try to say hi three times before the disconnection task kicked off in ReceiveHello fires and sees that the client state hasn't changed.
+
+        private int _helloTriesMax = Constants.CFG_HELLO_TASK_RETRIES_MAX;
+        private int _hasSentHello = 0;
+        public void SendHello()
+        {
+            StringBuilder mmb = new StringBuilder();
+
+            if (_hasSentHello <= _helloTriesMax) {
+                var newNonce = GenerateNewNonce();
+                var newValidationRequestMessage = new CleanSpaceHelloPacket
+                {
+                    SenderId = MyGameService.OnlineUserId,
+                    TargetType = MessageTarget.Client,
+                    Target = steamId,
+                    UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Nonce = newNonce,
+                    sessionParameters = (this.sessionParameters = SessionParameterFactory.CreateSessionParameters(this.clientSalt)),
+                    client_ip_echo =  this.origin
+                }; 
+                _hasSentHello += 1;
+                mmb.Append($"Saying hello to ID {steamId}... ");
+                if (_hasSentHello > 0)
+                    mmb.Append($"Try {_hasSentHello} of {_helloTriesMax}");              
+                PacketRegistry.Send(newValidationRequestMessage, new EndpointId(steamId), newNonce);
+                Task.Run(() => TryHelloTask());
+            }
+            else
+            {
+                mmb.Append($"Exhausted attempts to say hello to {steamId}.");
+            }              
+
+            Common.Logger.Info(mmb.ToString());
+        }
+        
+        // When the client gets here, it will not have a Session. The default behaviour always will be to discard the session at the manager level if one already exists. 
+        private void ReceiveHello(CleanSpaceHelloPacket r)
+        {
+            if ( !Common.Config.Enabled)
+            {
+                // Disabled; Bypass the entire process and just accept the connection.
+                AcceptConnection();
+                return;
+            }
+
+            if (this.sessionParameters.sessionSalt == null)
+            {
+                Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but we had no recorded session parameters. Discarding the whole thing.");
+                // TODO: Robust Error
+                RejectConnection();
+                return;
+            }
+
+            if (this.ConnectionState != CS_CLIENT_STATE.PENDING)
+            {
+                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent us a hello, but their state implies they already have a request out. Rejecting the connection for security reasons.");
+                RejectConnection();
+                return;
+            }
+
+            SessionParameters parametersIn = (SessionParameters)r.sessionParameters.Clone();
+            this.ConnectionState = CS_CLIENT_STATE.VALIDATION_REQUESTED;
+
+            if(!SessionParameterValidator.ValidateResponse(this.sessionParameters, r.sessionParameters, Sync.MyId, this.steamId, this.origin))
+            {
+                Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but failed validation.");
+                RejectConnection();
+                return;
+            }
+            this.lastClientNonce = null;
+            this.currentClientNonce = r.Nonce;
+            Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} said hello and passed initial validation checks. Starting chatter.");
+            this.BeginChatter();
+        }
+
+        private void BeginChatter()
+        {
+            if (this.ConnectionState != CS_CLIENT_STATE.VALIDATION_REQUESTED)
+            {
+                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent chatter, but their state implies aren't ready for it. Rejecting the connection for security reasons.");
+                RejectConnection();
+                return;
+            }
+           
+            chatterRemaining = this.sessionParameters.chatterLength;
+            Common.Logger.Debug($"{Common.PluginName}: Set chatter length to {chatterRemaining}.");
+            SendChatter();
+        }
+
+        private int chatterRemaining = 0;
+        private void SendChatter()
+        {
+
+            if (chatterRemaining == 0)
+            {
+                byte[] messageIV = new byte[12];
+                new Random().NextBytes(messageIV);
+
+                // The payload.
+                string newNonce = GenerateNewNonce();
+                PluginValidationRequest rs = new PluginValidationRequest()
+                {                 
+                    attestationChallenge = EncryptionUtil.EncryptBytesWithIV(this.clientHasherBytes, newNonce, this.clientSalt, messageIV).Concat(messageIV).ToArray(),
+                    attestationSignature = this.hasherSignature,
+                    Nonce = newNonce,
+                    Target = steamId,
+                    TargetType = MessageTarget.Client,
+                    UnixTimestamp = DateTime.Now.ToUnixTimestamp()
+                };
+
+                byte[] chatterPayload = null;
+                using (var ms = new MemoryStream())
+                {
+                    Serializer.Serialize<PluginValidationRequest>(ms, rs);
+                    chatterPayload = ms.ToArray();
+                }
+
+                // This time, the nonce on the chatter packet is insignificant, instead of the nonce on the dummy payload.
+                string insignificantNonce = TokenUtility.GenerateToken(Common.InstanceSecret, DateTime.UtcNow.AddSeconds(10)); ;
+                CleanSpaceChatterPacket cleanSpaceChatterPacket = new CleanSpaceChatterPacket()
+                {
+                    chatterPayload = chatterPayload,
+                    sessionParameters = this.chatterParameters,
+                    Nonce = insignificantNonce,
+                    Target = steamId,
+                    TargetType = MessageTarget.Client,
+                    SenderId = MyGameService.OnlineUserId,
+                    UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+                Common.Logger.Info($"Chatter with real payload sent to client ID {steamId}. Scheduling echoes...");
+
+                // When chatter begins, the lastClientNonce will be null. This is fine, because a per-message salt is used as the extra key if the supplied extra key is null.
+                PacketRegistry.Send(cleanSpaceChatterPacket, new EndpointId(steamId), newNonce, lastClientNonce);
+                this.ConnectionState = CS_CLIENT_STATE.VALIDATION_REQUESTED;
+                EventHub.OnServerCleanSpaceRequested(this, steamId, initialMsg);
+                noiseRemaining = 3;
+                Task.Run(() => SendNoise());
+            }
+            else
+            {
+                // The standard dummy package.             
+                chatterRemaining -= 1;
+                SendDummyChatterPayload();              
+            }
+        }
+
+        private void SendDummyChatterPayload(bool meaningfulNonce = true)
+        {
+            byte[] dummySignature;
+            byte[] dummyAttestation = new byte[this.clientHasherBytes.Length];
+            new Random().NextBytes(dummyAttestation);
+
+            string newNonce = TokenUtility.GenerateToken(Common.InstanceSecret, DateTime.UtcNow.AddSeconds(10));
+            using (var sig = new SHA256Managed())
+                dummySignature = sig.ComputeHash(dummyAttestation);
+
+            PluginValidationRequest rs = new PluginValidationRequest()
+            {
+                attestationChallenge = dummyAttestation,
+                attestationSignature = dummySignature,
+                Nonce = newNonce,
+                Target = steamId,
+                TargetType = MessageTarget.Client,
+                UnixTimestamp = DateTime.Now.ToUnixTimestamp()
+            };
+            byte[] chatterPayload = null;
+            using (var ms = new MemoryStream())
+            {
+                Serializer.Serialize<PluginValidationRequest>(ms, rs);
+                chatterPayload = ms.ToArray();
+            }
+
+            byte[] newSalt = new byte[16];
+            new Random().NextBytes(newSalt);
+            this.chatterParameters = SessionParameterFactory.CreateSessionParameters(newSalt);
+            string realNonce = meaningfulNonce ? GenerateNewNonce() : TokenUtility.GenerateToken(Common.InstanceSecret, DateTime.UtcNow.AddSeconds(10));
+            CleanSpaceChatterPacket cleanSpaceChatterPacket = new CleanSpaceChatterPacket()
+            {
+                chatterPayload = chatterPayload,
+                sessionParameters = this.chatterParameters,
+                Nonce = realNonce,
+                Target = steamId,
+                TargetType = MessageTarget.Client,
+                SenderId = MyGameService.OnlineUserId,
+                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+            PacketRegistry.Send(cleanSpaceChatterPacket, new EndpointId(steamId), newNonce, lastClientNonce);
+            Common.Logger.Info($"Chatter with dummy payload sent to client ID {steamId}");
+        }
+
+        private void ReceiveChatter(CleanSpaceChatterPacket r)
+        {
+            try
+            {
+                SessionParameterValidator.ValidateResponse(this.chatterParameters, r.sessionParameters, MyGameService.OnlineUserId, steamId, origin);
+            }
+            catch (Exception e)
+            {
+                Common.Logger.Info($"Client ID {steamId} failed a chatter validation. Rejecting connection.");
+                RejectConnection();
+                return;
+            }
+
+            if (chatterRemaining > 0)
+            {
+                SendChatter();
+            }
+        }
+
+        private int noiseRemaining = 0;
+        private async Task SendNoise()
+        {
+            await Task.Delay(1000);
+            noiseRemaining -= 1;
+            SendDummyChatterPayload(false);
+            if (noiseRemaining > 0)
+            {
+                await Task.Run(() => SendNoise());
+            }
+        }
+        private async Task TryHelloTask()
+        {
+            await Task.Delay(Constants.CFG_HELLO_TASK_RETRY_DELAY);
+            if (ConnectionState == CS_CLIENT_STATE.PENDING)
+                SendHello();
+        }
 
         private void RejectConnection()
         {
+
+            if (this.validationResultData == null){
+                this.validationResultData = new ValidationResultData { Code = ValidationResultCode.FAILED_COMMUNICATION, PluginList = null, Success = false };
+            }
             string newNonce = GenerateNewNonce();
             PluginValidationResult rs = new PluginValidationResult()
             {
-                Code = validationResultData?.Code ?? ValidationResultCode.INVALID_TOKEN,
+                Code = validationResultData?.Code ?? ValidationResultCode.FAILED_COMMUNICATION,
                 Success = false,
-                PluginList = validationResultData?.PluginList,
-                SenderId = MyGameService.OnlineUserId,
+                PluginList = validationResultData?.PluginList ?? new List<string>(),
+                SenderId = Sync.MyId,
                 TargetType = MessageTarget.Client,
                 Target = steamId,
                 UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Nonce = newNonce
             };
+
             EventHub.OnServerConnectionRejected(this, steamId, validationResultData);
-            Log.Info($"Sending result packet containing information about rejection to ID {steamId} and scheduling a ticket cancellation for the request.");
+            Common.Logger.Info($"Sending result packet containing information about rejection to ID {steamId} and scheduling a ticket cancellation for the request.");
             PacketRegistry.Send(rs, new EndpointId(steamId), newNonce);
             Task.Run(() => DelayedDisconnect());
         }
-
-        public void InitiateCleanSpaceCheck()
-        {
-
-            if (((connectionState == CS_CLIENT_STATE.VALIDATION_FINALIZED) && (validationResultData?.Success ?? false)) || !Common.Config.Enabled)
-            {
-                MyP2PSessionState state = new MyP2PSessionState();
-                if (MyGameService.Peer2Peer.GetSessionState(steamId, ref state))
-                {
-                    if(state.RemoteIP == this.origin)
-                    {
-                        AcceptConnection();
-                    }
-                    else
-                    {
-                        this.origin = state.RemoteIP;
-                        Log.Warn($"Client {steamId} connected from a different origin. Their clean space session was discarded.");
-                        ResetState();                       
-                    }
-                }
-
-               
-            }
-            EventHub.OnServerCleanSpaceRequested(this, this.steamId, initialMsg);         
-            Common.Logger.Info($"{Common.PluginName}: Initiating clean space request for player {steamId}...");
-
-            if(ConnectionState != CS_CLIENT_STATE.PENDING)
-            {              
-                throw new Exception($"InitiateCleanSpaceCheck called but client state was not pending for client ID {steamId}.");
-            }
-
-
-            byte[] messageIV = new byte[12];
-            new Random().NextBytes(messageIV);
-
-            var newNonce = GenerateNewNonce();
-            var newValidationRequestMessage = new PluginValidationRequest
-            {
-                SenderId = MyGameService.OnlineUserId,
-                TargetType = MessageTarget.Client,
-                Target = steamId,
-                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = newNonce,                
-                attestationChallenge = EncryptionUtil.EncryptBytesWithIV(this.clientHasherBytes, newNonce, this.clientSalt, messageIV).Concat(messageIV).Concat(clientSalt).ToArray(),
-                attestationSignature = this.hasherSignature
-            };
-            PacketRegistry.Send(newValidationRequestMessage, new EndpointId(steamId), newNonce);            
-            Task.Run(() => DelayedDisconnectWithGroupRedirect());
-        }
-
+                
         private string GenerateNewNonce()
         {
-            this.lastServerNonce = (string)this.serverPendingNonce.Clone();
+            if(this.serverPendingNonce != null)
+                this.lastServerNonce = (string)this.serverPendingNonce.Clone();
             return (this.serverPendingNonce = ValidationManager.RegisterNonceForPlayer(steamId, true));
         }
         private void ResetState()
@@ -271,6 +519,17 @@ namespace TorchPlugin.Tracker
         public void Dispose()
         {
             EventHub.ClientCleanSpaceResponded -= EventHub_ClientCleanSpaceResponded;
+            EventHub.CleanSpaceHelloReceived -= EventHub_CleanSpaceHelloReceived;
+        }
+
+        private bool session_initiated = false;
+        internal void Initiate()
+        {
+            if (session_initiated) return;
+            session_initiated = true;
+            Common.Logger.Info($"Session for ID {steamId} initiated.");
+            SendHello();
+            Task.Run(() => DelayedDisconnectWithGroupRedirect());
         }
     }
 
@@ -288,6 +547,7 @@ namespace TorchPlugin.Tracker
             Instance = this;
             Logger.Info("Clean Space client manager initialized.");
         }
+
         internal void Init_Events()
         {
             if (events_initialized) return;
@@ -324,7 +584,7 @@ namespace TorchPlugin.Tracker
 
         public ClientSession CreateNewClientSession(ulong steamId, ConnectedClientDataMsg initialMsg)
         {
-            if(!_clientSessions.TryAdd(steamId, new ClientSession(initialMsg)))
+            if(!_clientSessions.TryAdd(steamId, new ClientSession(steamId, initialMsg)))
             {
                 Logger.Error($"Failed to create a new session for {steamId}. Could not add to dictionary.");
                 return null;
@@ -337,14 +597,17 @@ namespace TorchPlugin.Tracker
         private void EventHub_ClientConnected(object sender, CleanSpaceEventArgs e)
         {
             ulong target = (ulong)e.Args[0];
-            ConnectedClientDataMsg msg = (ConnectedClientDataMsg)e.Args[1];
+            ConnectedClientDataMsg msg = ((ConnectedClientDataMsg)e.Args[1]);
             if(target == 0 || msg.ClientId == null){
                 Logger.Error("Client connected but msg had 0 for endpoint ID.");
                 return;
             }
+
+
             CloseClientSession(target);
             var session = CreateNewClientSession(target, msg);
-            session.InitiateCleanSpaceCheck();                    
+            session.Initiate();              
+            
         }
 
     }

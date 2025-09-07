@@ -97,6 +97,11 @@ namespace Shared.Util
             byte[] signature = hmac.ComputeHash(payload);
             return Convert.ToBase64String(signature);
         }
+        public static byte[] SignPayloadBytes(byte[] payload, byte[] key)
+        {
+            var hmac = new HMACSHA512(key);
+            return hmac.ComputeHash(payload);
+        }
 
         private static byte[] DeriveKey(string seed, string purpose)
         {

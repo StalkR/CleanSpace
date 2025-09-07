@@ -1,16 +1,12 @@
 using CleanSpaceShared.Scanner;
 using Shared.Logging;
-using Shared.Plugin;
 using Shared.Struct;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using VRage.Compression;

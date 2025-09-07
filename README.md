@@ -1,10 +1,22 @@
-# Clean Space: A better space engineers multiplayer experience.
+# Clean Space: A cleaner Space Engineers multiplayer experience.
 
+Space engineers is a game with limitless potential, and for perceived limitation on a player there is always ten different unorthodox ways around it. Keen has
+provided us with a massive sandbox to modify as we se fit with *mods* and the community has built a city on it.  
 
-Space engineers is a game with limitless potential, and for every constraint on a player there is always a way around it. 
-That's great! Until the way the game is played affects others. One of the ways this can happen is through client side plugins
-that provide their user with an unfair advantage. While these plugins are not officially supported by keen and are often
-banned by the communities they are used in; there is no real way to enforce these bans.  
+Another form of modification to the game that Keen is a tad less 'keen' on is *Plugins*. These modifications to the game exist outside of Keen and Steam's ultimate control and have been a source controversy on multiplayer servers since the days people have had something to lose. (always)
+  
+Plugins are assembly files that operate at the same language level and with the same operating system permissions as the game - giving them a near limitless amount of power and potential in the
+context of modifying Space Engineers. This power comes with a catch; bad actors can use this extensibility as a doorway to distribute malicious software, or even a less technically savy user can easily install
+plugins that affect the way their game functions on a multiplayer server. 
+
+The open nature of the game tends to attract a very intelligent community full of energy for bringing their creations to life - and that energy tends to stop for no barrier.
+"By any means" could be the motto of the Space Engineers community. If an advantage exists, the community will use it. It's the nature of the game!
+
+That is, until the way the game is played for one affects others in an unfair way. In most cases, it means a more negative experience for the party that does not use an advantage. That advantage in
+this case are plugins. Consider two ships engaging in combat where one pilot can see through the ship and has it's critical components highlighted on their HUD? While this is an easy to imagine example, the possibilities are once again; truly unlimited.  
+
+While these plugins are not officially supported by keen and are often banned by the communities they are found used in; there is no real way to enforce these bans. Most servers rely on policy and community culture in order to convince players not to engage in the use
+of unfair plugins. 
 
 Clean space changes that.  
 
