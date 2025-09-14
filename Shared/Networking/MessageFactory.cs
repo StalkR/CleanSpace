@@ -57,8 +57,7 @@ namespace CleanSpaceShared.Networking
             {
                 Shared.Plugin.Common.Logger.Error(ex, "UNWRAP: " + ex.Message);
             }
-
-            Shared.Plugin.Common.Logger.Debug( "K: " + skey);
+           
             if (envelope.IsEncrypted)
             {
                 try

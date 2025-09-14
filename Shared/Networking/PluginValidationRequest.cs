@@ -1,24 +1,15 @@
-﻿using CleanSpace;
-using CleanSpaceShared.Scanner;
-using ProtoBuf;
-using Sandbox.Engine.Multiplayer;
-using Sandbox.Game.Multiplayer;
+﻿using ProtoBuf;
 using Shared.Events;
 using Shared.Util;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using VRage.GameServices;
-using VRage.Network;
 
 namespace CleanSpaceShared.Networking
 {
     [ProtoContract]
     public class PluginValidationRequest : MessageBase
     {
+        [ProtoMember(7)]
         public byte[] attestationSignature;
+        [ProtoMember(8)]
         public byte[] attestationChallenge;
         public override void ProcessClient<PluginValidationRequest>(PluginValidationRequest r)
         {          

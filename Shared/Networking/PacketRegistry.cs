@@ -24,7 +24,6 @@ namespace CleanSpaceShared.Networking
 
     public static class SecretPacketFactory<T> where T : MessageBase
     {
-        public static bool IsServer => Common.IsServer;
         public static void handler<U>(IProtoPacketData packet, EndpointId sender) where U : ProtoPacketData<T>
         {
             T message;
@@ -36,7 +35,7 @@ namespace CleanSpaceShared.Networking
                     Common.Logger.Debug($"Exist LEN: {n.Length}");
                     message = ((U)packet).GetMessage(n);
 
-                    if (IsServer)
+                    if (Common.IsServer)
                         message.ProcessServer(message);
                     else
                         message.ProcessClient(message);                   
@@ -48,7 +47,7 @@ namespace CleanSpaceShared.Networking
             }
             catch (Exception ex)
             {
-                Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value} with key. {ex.Message}");
+                Common.Logger.Warning($"E19: Handler failed to unwrap a message from {sender.Value} with key. {ex.Message}");
                 return;
             }
 
@@ -59,7 +58,6 @@ namespace CleanSpaceShared.Networking
 
     public static class DefaultPacketFactory<T> where T: MessageBase
     {
-        public static bool IsServer => Shared.Plugin.Common.IsServer;
         public static void handler<U>(IProtoPacketData packet, EndpointId sender) where U: ProtoPacketData<T>
         {
             T message;
@@ -69,20 +67,16 @@ namespace CleanSpaceShared.Networking
             }
             catch(Exception ex)
             {
-                Shared.Plugin.Common.Logger.Warning($"Handler failed to unwrap a message from {sender.Value}. {ex.Message}");
+                Common.Logger.Warning($"E18: Handler failed to unwrap a message from {sender.Value}. {ex.Message}");
                 return;
             }
             
-            if (IsServer)
-            { 
-
+            if (Common.IsServer)
                 message.ProcessServer(message);
-            }
             else
-            {
                 message.ProcessClient(message);
-            }
-             ((U)packet).Return();
+            
+            ((U)packet).Return();
         }
     }
 

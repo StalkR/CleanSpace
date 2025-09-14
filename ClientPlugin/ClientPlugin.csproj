@@ -21,7 +21,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>0</WarningLevel>
+    <WarningLevel>1</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>x64</PlatformTarget>
@@ -633,6 +633,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClientSessionParameterProviders.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="Settings\Elements\Button.cs" />
     <Compile Include="Settings\Elements\Dropdown.cs" />
     <Compile Include="Settings\Elements\Element.cs" />

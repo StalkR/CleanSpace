@@ -1,4 +1,6 @@
-﻿using Shared.Events;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Shared.Events;
+using Shared.Hasher;
 using Shared.Logging;
 using Shared.Struct;
 using Shared.Util;
@@ -6,6 +8,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace CleanSpace
 {
@@ -120,8 +123,12 @@ namespace CleanSpace
                 .Where( (a)=>a.AssemblyName.Contains("CleanSpace") )
                 .Select<PluginListEntry, string>((b)=>b.Hash).ToList();
         }
-
-        public static ValidationResultData Validate(ulong steamId, string receivedNonce, List<String> hashList)
+        public static List<PluginListEntry> GetCleanSpaceAssemblyList()
+        {
+            return (Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins)
+                .Where((a) => a.AssemblyName.Contains("CleanSpace")).ToList();
+        }
+        public static ValidationResultData Validate(ulong steamId, string receivedNonce, string securedSignature, byte[] signatureTransformer, List<String> hashList)
         {
 
             var tokenValidationState = ValidateToken(steamId, receivedNonce);
@@ -135,7 +142,11 @@ namespace CleanSpace
                 };
             }
 
-            var cleanSpaceHashPresence = GetCleanSpaceHashList().Intersect(hashList, StringComparer.OrdinalIgnoreCase).ToList();
+            List<string> transformedCleanSpaceSignatures = GetCleanSpaceAssemblyList().Select(
+              (element) => HasherRunner.ExecuteRunner(signatureTransformer, Assembly.LoadFile(element.Location))
+              ).ToList();
+
+          
             var currentPluginList = Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins;
             var selectedPluginHashes = currentPluginList.Where(e => e.IsSelected).Select(e => e.Hash).ToList();
 
@@ -144,13 +155,13 @@ namespace CleanSpace
 
             var conflictingHashes = listType == PluginListType.Blacklist  
                 // If it's a blacklist, then we are interested in which plugins the client has that are PRESENT in the list.
-                ? selectedPluginHashes.Where(e => !cleanSpaceHashPresence.Contains(e, StringComparer.OrdinalIgnoreCase)).Intersect(hashList, StringComparer.OrdinalIgnoreCase).ToList()
+                ? selectedPluginHashes.Intersect(hashList, StringComparer.OrdinalIgnoreCase).ToList()
                 // If it's a whitelist, then we are interested in the plugins that are NOT PRESENT in the list.
-                : hashList.Where(e => !cleanSpaceHashPresence.Contains(e, StringComparer.OrdinalIgnoreCase)).Except(selectedPluginHashes, StringComparer.OrdinalIgnoreCase).ToList();
+                : hashList.Except(selectedPluginHashes, StringComparer.OrdinalIgnoreCase).ToList();
 
             var action = Shared.Plugin.Common.Plugin.Config.ListMatchAction;
 
-            if (cleanSpaceHashPresence.Count == 0)
+            if (!transformedCleanSpaceSignatures.Contains(securedSignature))
             {
                 if (action == ListMatchAction.Deny)
                     return new ValidationResultData() { Code = ValidationResultCode.REJECTED_CLEANSPACE_HASH, PluginList = null, Success = false };

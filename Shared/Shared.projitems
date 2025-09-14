@@ -29,6 +29,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)struct\ListMatchAction.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Struct\PluginListEntry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\PluginListType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)struct\SessionParameterRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\SessionParameters.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\ValidationResultCode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\CompressionUtil.cs" />
@@ -50,6 +51,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Tools\WineDetector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\EncryptionUtil.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)util\MiscUtil.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)util\ProtoUtil.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\TokenUtility.cs" />
   </ItemGroup>
   <ItemGroup>

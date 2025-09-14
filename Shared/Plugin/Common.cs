@@ -13,12 +13,20 @@ namespace Shared.Plugin
         public static IPluginLogger Logger { get; private set; }
         public static IPluginConfig Config { get; private set; }
 
+        public static int JITTEST_RESPONSE_WINDOW_SIZE = 256;
+
         public static string GameVersion;
         public static string DataDir;
         public static string PluginName;
         public static bool IsServer;
         private static string _instanceSecret;
         public static ulong CleanSpaceGroupID => 103582791475284354;
+
+        public static Type[] CriticalTypes = new Type[]{
+                        typeof(CleanSpaceShared.Scanner.AssemblyScanner),
+                        typeof(Hasher.HasherRunner)
+                   };
+
         public static string InstanceSecret = _instanceSecret != null ? _instanceSecret :  (_instanceSecret = TokenUtility.GenerateToken(DateTime.UtcNow.ToLongTimeString(), DateTime.UtcNow.AddDays(1), "secret"));
         public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger)
         {

@@ -13,13 +13,13 @@ namespace CleanSpaceShared.Networking
     [ProtoContract]
     public class PluginValidationResult : MessageBase
     {
-        [ProtoMember(6)]
+        [ProtoMember(7)]
         public bool Success;
 
-        [ProtoMember(7)]
+        [ProtoMember(8)]
         public ValidationResultCode Code;
 
-        [ProtoMember(8)]
+        [ProtoMember(9)]
         public List<string> PluginList;
 
         public override void ProcessClient<PluginValidationResult>(PluginValidationResult r)

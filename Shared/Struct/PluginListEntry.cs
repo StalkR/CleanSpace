@@ -10,6 +10,7 @@ namespace Shared.Struct
         private string _name;
         private string _assemblyName;
         private string _version;
+        private string _location;
         private string _hash;
         private DateTime _lastHashed;
 
@@ -90,6 +91,16 @@ namespace Shared.Struct
                     _lastHashed = value;
                     OnPropertyChanged(nameof(LastHashed));
                 }
+            }
+        }
+
+        public string Location 
+        { 
+            get => _location;
+            set
+            {
+                _location = value;
+               OnPropertyChanged(nameof(Location));
             }
         }
 

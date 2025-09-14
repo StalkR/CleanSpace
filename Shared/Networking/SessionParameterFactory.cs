@@ -1,38 +1,180 @@
-﻿using Shared.Util;
+﻿
+using ProtoBuf;
+using Shared.Plugin;
+using Shared.Struct;
 using System;
 using System.Collections.Generic;
-using System.Net;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+
+[ProtoContract]
+public class MethodIdentifier
+{
+    [ProtoMember(1)]
+    public string FullName { get; set; }
+
+    [ProtoMember(2)]
+    public string[] MethodParams { get; set; }
+
+    [ProtoMember(3)]
+    public string MethodName { get; set; }
+ 
+}
+
+public static class ILAttester
+{
+    public static byte[] GetMethodIlBytes(MethodBase method)
+    {
+        if (method == null) throw new ArgumentNullException(nameof(method));
+        var body = method.GetMethodBody();
+        if (body == null) return Array.Empty<byte>();
+        byte[] ilBytes = body.GetILAsByteArray();
+        if (ilBytes == null) return Array.Empty<byte>();
+
+        return ilBytes;
+    }
+
+    public static byte[] GetTypeIlBytes(Type type)
+    {
+        if (type == null) throw new ArgumentNullException(nameof(type));
+        var allBytes = type
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .SelectMany(m => { var bytes = GetMethodIlBytes(m); return bytes ?? Array.Empty<byte>(); }).ToArray();
+        return allBytes;
+    }
+}
+
+[ProtoContract]
+public class JittestResponse
+{
+    [ProtoMember(1)]
+    public string AssemblyName { get; set; } = "";
+
+    [ProtoMember(2)]
+    public string ModuleMvid { get; set; } = "";
+
+    [ProtoMember(3)]
+    public int MetadataToken { get; set; }
+
+    [ProtoMember(4)]
+    public long RuntimeMethodHandleValue { get; set; }
+
+    [ProtoMember(5)]
+    public ulong FunctionPointer { get; set; }
+
+    [ProtoMember(6)]
+    public int WindowLength { get; set; }
+
+    [ProtoMember(7)]
+    public byte[] WindowBytes { get; set; } = Array.Empty<byte>();
+
+    [ProtoMember(8)]
+    public byte[] Mac { get; set; } = Array.Empty<byte>();
+}
+public static class JitAttest
+{
+    // Maximum bytes to try reading. God hope we dont hit this limit.
+    const int MaxMethodSize = 64 * 1024; // 64 KB
+
+    private static byte[] ReadUntilFault(IntPtr ptr, int maxLen)
+    {
+        var buffer = new List<byte>();
+        var tmp = new byte[16]; // small chunk for probing
+        int offset = 0;
+
+        while (offset < maxLen)
+        {
+            try
+            {
+                Marshal.Copy(ptr + offset, tmp, 0, tmp.Length);
+                buffer.AddRange(tmp);
+                offset += tmp.Length;
+            }
+            catch
+            {
+                break; // stop at first invalid read
+            }
+        }
+
+        return buffer.ToArray();
+    }
+
+    public static JittestResponse BuildAttestation(
+        MethodBase method,
+        byte[] nonce,
+        byte[] macKey)
+    {
+        RuntimeHelpers.PrepareMethod(method.MethodHandle);
+
+        var rmhVal = method.MethodHandle.Value;
+        var fptr = method.MethodHandle.GetFunctionPointer();
+
+        var window = ReadUntilFault(fptr, MaxMethodSize);
+
+        byte[] mac;
+        using (var hmac = new HMACSHA256(macKey))
+        {
+            void Feed(byte[] b) => hmac.TransformBlock(b, 0, b.Length, null, 0);
+
+            Feed(BitConverter.GetBytes(nonce.Length));
+            Feed(nonce);
+
+            var asmName = method.DeclaringType?.Assembly.GetName().Name ?? "";
+            var asmBytes = Encoding.UTF8.GetBytes(asmName);
+            Feed(BitConverter.GetBytes(asmBytes.Length));
+            Feed(asmBytes);
+
+            var mvidBytes = method.Module.ModuleVersionId.ToByteArray();
+            Feed(BitConverter.GetBytes(mvidBytes.Length));
+            Feed(mvidBytes);
+
+            Feed(BitConverter.GetBytes(method.MetadataToken));
+            Feed(BitConverter.GetBytes(rmhVal.ToInt64()));
+            Feed(BitConverter.GetBytes(fptr.ToInt64()));
+
+            Feed(BitConverter.GetBytes(window.Length));
+            Feed(window);
+
+            hmac.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            mac = hmac.Hash;
+        }
+
+        return new JittestResponse
+        {
+            AssemblyName = method.DeclaringType?.Assembly.GetName().Name ?? "",
+            ModuleMvid = method.Module.ModuleVersionId.ToString(),
+            MetadataToken = method.MetadataToken,
+            RuntimeMethodHandleValue = rmhVal.ToInt64(),
+            FunctionPointer = (ulong)fptr.ToInt64(),
+            WindowLength = window.Length,
+            WindowBytes = window,
+            Mac = mac
+        };
+    }
+}
+
+
+
 
 public enum RequestType : byte
 {
-    // IPv4 or lower bytes of IPv6
-    ClientIpBytes1 = 1,
-    ClientIpBytes2 = 2,
-    ClientIpBytes3 = 3,
-    ClientIpBytes4 = 4,
-
-    // SteamIDs (8 bytes = 2 possible challenges each)
-    ClientSteamId1 = 21, 
-    ClientSteamId2 = 22, 
-    ServerSteamId1 = 31,
-    ServerSteamId2 = 32,
-
-    // Assemblies
-    LoadedAssembliesCount = 40,
-
-    // Salt (16 bytes = 4 chunks of possibilities)
-    EchoSalt1 = 50,
-    EchoSalt2 = 51,
-    EchoSalt3 = 52,
-    EchoSalt4 = 53,
+    MethodIL = 31,
+  //  TypeIL = 32, ITS NOT GONE! todo! :(
+  //  SaltEcho = 32,
+  //  LoadedAssembliesCount = 40,
+  //  JitAttestation = 100   :( experiment unsuccessful
 }
 
 public static class SessionParameterFactory
 {
     private static readonly Random _rng = new Random();
 
-    public delegate byte[] ChunkValidationProvider(SessionParameters originalParameters, ulong serverSteamID, ulong clientSteamID, uint clientOriginIP);
-
+    public delegate byte[] ChunkValidationProvider(params object[] param);
     public static Dictionary<RequestType, ChunkValidationProvider> providers = new Dictionary<RequestType, ChunkValidationProvider>();
 
     public static void RegisterProvider(RequestType requestType, ChunkValidationProvider requestDelegate)
@@ -40,123 +182,118 @@ public static class SessionParameterFactory
         providers[requestType] = requestDelegate;
     }
 
-    public static void RegisterProviders()
+    private static MethodBase GetRandomMethod(Type type)
     {
+        if (type == null) throw new ArgumentNullException(nameof(type));
 
-        RegisterProvider(RequestType.ClientIpBytes1, (orig, serverId, clientId, clientIp) =>
-        {
-            var ipBytes = BitConverter.GetBytes(clientIp);
-            return new byte[] { ipBytes[0], 0, 0, 0 };
-        });
+        var methods = type
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
+                        BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Where(m =>
+                !m.IsSpecialName &&
+                m.Name != ".ctor" && m.Name != ".cctor")
+            .Cast<MethodBase>()
+            .ToArray();
 
-        RegisterProvider(RequestType.ClientIpBytes2, (orig, serverId, clientId, clientIp) =>
-        {
-            var ipBytes = BitConverter.GetBytes(clientIp);
-            return new byte[] { ipBytes[1], 0, 0, 0 };
-        });
+        if (methods.Length == 0)
+            return null;
 
-        RegisterProvider(RequestType.ClientIpBytes3, (orig, serverId, clientId, clientIp) =>
-        {
-            var ipBytes = BitConverter.GetBytes(clientIp);
-            return new byte[] { ipBytes[2], 0, 0, 0 };
-        });
-
-        RegisterProvider(RequestType.ClientIpBytes4, (orig, serverId, clientId, clientIp) =>
-        {
-            var ipBytes = BitConverter.GetBytes(clientIp);
-            return new byte[] { ipBytes[3], 0, 0, 0 };
-        });
-
-        RegisterProvider(RequestType.ClientSteamId1, (orig, serverId, clientId, clientIp) =>
-            BitConverter.GetBytes((uint)(clientId & 0xFFFFFFFF)));
-
-        RegisterProvider(RequestType.ClientSteamId2, (orig, serverId, clientId, clientIp) =>
-            BitConverter.GetBytes((uint)(clientId >> 32)));
-
-        RegisterProvider(RequestType.ServerSteamId1, (orig, serverId, clientId, clientIp) =>
-            BitConverter.GetBytes((uint)(serverId & 0xFFFFFFFF)));
-
-        RegisterProvider(RequestType.ServerSteamId2, (orig, serverId, clientId, clientIp) =>
-            BitConverter.GetBytes((uint)(serverId >> 32)));
-
-        RegisterProvider(RequestType.LoadedAssembliesCount, (orig, serverId, clientId, clientIp) =>
-            BitConverter.GetBytes(AppDomain.CurrentDomain.GetAssemblies().Length));
-
-        RegisterProvider(RequestType.EchoSalt1, (orig, serverId, clientId, clientIp) =>
-        {
-            var slice = new byte[4];
-            Array.Copy(orig.sessionSalt, 0, slice, 0, 4);
-            return slice;
-        });
-
-        RegisterProvider(RequestType.EchoSalt2, (orig, serverId, clientId, clientIp) =>
-        {
-            var slice = new byte[4];
-            Array.Copy(orig.sessionSalt, 4, slice, 0, 4);
-            return slice;
-        });
-
-        RegisterProvider(RequestType.EchoSalt3, (orig, serverId, clientId, clientIp) =>
-        {
-            var slice = new byte[4];
-            Array.Copy(orig.sessionSalt, 8, slice, 0, 4);
-            return slice;
-        });
-
-        RegisterProvider(RequestType.EchoSalt4, (orig, serverId, clientId, clientIp) =>
-        {
-            var slice = new byte[4];
-            Array.Copy(orig.sessionSalt, 12, slice, 0, 4);
-            return slice;
-        });
-        Shared.Plugin.Common.Logger.Info($"{Shared.Plugin.Common.Logger}: Session parameter validation providers registered.");
+        return methods[_rng.Next(methods.Length)];
     }
 
     public static SessionParameters CreateSessionParameters(byte[] salt)
     {
+        var numRequests = _rng.Next(2, 5);
+        List<SessionParameterRequest> requests = new List<SessionParameterRequest>();
+        bool placed_LAC = false;
+
+        Common.Logger.Debug($"{Common.PluginName} Starting with {numRequests} request slots, salt length={salt?.Length ?? 0}");
+
+        for (int i = 0; i < numRequests; i++)
+        {
+            byte newRequesType = GetRandomRequestType();
+            Common.Logger.Debug($"{Common.PluginName} Slot {i}: picked request type {(RequestType)newRequesType}");
+
+            switch (newRequesType)
+            {
+                case ((byte)RequestType.MethodIL):
+              //  case ((byte)RequestType.JitAttestation):
+                    Type[] choices = Common.CriticalTypes;
+                    if (choices == null || choices.Length == 0)
+                    {
+                        Common.Logger.Error($"{Common.PluginName}: CriticalTypes is null or empty! Skipping.");
+                        continue;
+                    }
+
+                    Type choice = choices[_rng.Next(choices.Length)];
+                    MethodBase target = GetRandomMethod(choice);
+
+                    if (target == null)
+                    {
+                        Common.Logger.Error($"{Common.PluginName} Failed to resolve a target method for type {choice.FullName}");
+                        continue;
+                    }
+
+                    var paramTypes = target.GetParameters().Select(p => p.ParameterType.Name).ToArray();
+
+                    // Log full method signature
+                    Common.Logger.Debug($"{Common.PluginName}: Assigned method: {target.DeclaringType?.FullName}.{target.Name}({string.Join(", ", paramTypes)})");
+
+                    byte[] serializedMethodBase = ProtoUtil.Serialize(
+                        new MethodIdentifier
+                        {
+                            FullName = target.DeclaringType?.FullName ?? "<null>",
+                            MethodParams = paramTypes,
+                            MethodName = target.Name
+                        });
+
+                    Common.Logger.Debug($"{Common.PluginName}: Serialized MethodIdentifier (Base64): {Convert.ToBase64String(serializedMethodBase)}");
+
+                    requests.Add(new SessionParameterRequest
+                    {
+                        request = newRequesType,
+                        context = serializedMethodBase
+                    });
+                    break;                
+            }
+        }
+
+        string challenges = string.Join(", ", requests.Select(e => Enum.GetName(typeof(RequestType), e.request)));
+        Common.Logger.Debug($"{Common.PluginName}: Final challenge sequence: {challenges}");
+
         var ret = new SessionParameters
         {
-            randomRequestType1 = GetRandomRequestType(),
-            randomRequestType2 = GetRandomRequestType(),
-            randomRequestType3 = GetRandomRequestType(),         
-            chatterLength = (byte)_rng.Next(2, 10),
+            requests = requests.ToArray(),
+            chatterLength = (byte)_rng.Next(1, 6),
             sessionSalt = salt
         };
-        ret.randomRequestType4 = (ret.randomRequestType1 != 40 
-                                && ret.randomRequestType2 != 40 
-                                && ret.randomRequestType3 != 40) 
-                                ? (byte)RequestType.LoadedAssembliesCount 
-                                : GetRandomRequestType();
+
+        Common.Logger.Debug($"{Common.PluginName}: Created SessionParameters: chatterLength={ret.chatterLength}, totalRequests={ret.requests.Length}");
         return ret;
     }
 
-    public static SessionParameters AnswerChallenge(SessionParameters challenge, uint clientIp, ulong clientSteamId, ulong serverSteamId, int loadedAssemblies)
+    public static byte[] AnswerChallenge(SessionParameters challenge, params object[] args)
     {
-        byte[] buffer = new byte[16];
 
-        WriteResponse(buffer, 0, challenge.randomRequestType1, challenge.sessionSalt,
-            clientIp, clientSteamId, serverSteamId, loadedAssemblies, challenge);
-        WriteResponse(buffer, 4, challenge.randomRequestType2, challenge.sessionSalt,
-            clientIp, clientSteamId, serverSteamId, loadedAssemblies, challenge);
-        WriteResponse(buffer, 8, challenge.randomRequestType3, challenge.sessionSalt,
-            clientIp, clientSteamId, serverSteamId, loadedAssemblies, challenge);
-        WriteResponse(buffer, 12, challenge.randomRequestType3, challenge.sessionSalt,
-           clientIp, clientSteamId, serverSteamId, loadedAssemblies, challenge);
-
-        challenge.sessionSalt = buffer;
-        return challenge;
-    }
-
-    private static void WriteResponse( byte[] buffer, int offset, byte requestType, byte[] salt, uint clientIp, ulong clientSteamId,  ulong serverSteamId, int loadedAssemblies, SessionParameters challengeIn)
-    {
-        var rt = (RequestType)requestType;
-        byte[] slice = new byte[4];
-
-        if (!providers.TryGetValue(rt, out var provider))
-            return;
-
-        slice = provider.Invoke(challengeIn, serverSteamId, clientSteamId, clientIp);
-        Array.Copy(slice, 0, buffer, offset, 4);
+        using (var ms = new MemoryStream())
+        {
+            foreach (var request in challenge.requests)
+            {
+                var rt = (RequestType)request.request;
+                if (!providers.TryGetValue(rt, out var provider))
+                {
+                    throw new ArgumentException("Provider not found: " + rt.ToString());
+                }
+                   
+                var fullArgs = new object[] { request.context }.Concat(args).ToArray();
+                byte[] slice = provider.Invoke(fullArgs);
+                byte[] len = BitConverter.GetBytes(slice.Length);
+                ms.WriteByte(request.request);
+                ms.Write(len,0,len.Length);
+                ms.Write(slice, 0, slice.Length);
+            }
+            return ms.ToArray();
+        }
     }
 
     private static byte GetRandomRequestType()

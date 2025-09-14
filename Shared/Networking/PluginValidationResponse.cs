@@ -8,7 +8,10 @@ namespace CleanSpaceShared.Networking
     {
         [ProtoMember(7)]
         public List<string> PluginHashes;
+        [ProtoMember(8)]
         public string attestationResponse;
+        [ProtoMember(9)]
+        public byte[] newSteamToken;
 
         public override void ProcessClient<PluginValidationResponse>(PluginValidationResponse r)
         {
@@ -18,7 +21,7 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessServer<PluginValidationResponse>(PluginValidationResponse r)
         {
-            string token = r.Nonce;
+            string token = r.NonceS;
             if (token == null){
                 Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
                 return;

@@ -1,8 +1,6 @@
-
-
-using CleanSpaceShared.Networking;
 using Sandbox.Engine.Networking;
 using System;
+using System.Reflection;
 using VRage.Network;
 
 namespace Shared.Events
@@ -19,6 +17,8 @@ namespace Shared.Events
         SERVER_CS_FINALIZED = 102,
         SERVER_CS_ACCEPTED = 121,
         SERVER_CS_REJECTED = 122,
+        CS_CHATTER = 123,
+        SERVER_CS_SCANNNED_PLUGIN = 124,
     }
     public class CleanSpaceEventArgs : EventArgs
     {
@@ -68,6 +68,9 @@ namespace Shared.Events
         public static event EventHandler<CleanSpaceTargetedEventArgs> ServerCleanSpaceRequested;
         public static event EventHandler<CleanSpaceTargetedEventArgs> ClientCleanSpaceResponded;
         public static event EventHandler<CleanSpaceTargetedEventArgs> ServerCleanSpaceFinalized;
+
+        public static event EventHandler<CleanSpaceEventArgs> CleanSpaceServerScannedPlugin;
+
         public static bool IsServer => Shared.Plugin.Common.IsServer;
         public static string PluginName => Shared.Plugin.Common.PluginName;
         public static ulong? MyID => MyGameService.OnlineUserId;
@@ -79,7 +82,7 @@ namespace Shared.Events
           => ServerConnectionRejected?.Invoke(sender, new CleanSpaceClientSessionEventArgs(CleanSpaceEvent.SERVER_CS_REJECTED, IsServer, steamId, args));
 
         public static void OnCleanSpaceHelloReceived(object sender, ulong source, ulong target, params object[] args)
-          => CleanSpaceHelloReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_HELLO, IsServer, source, target, args));
+          => CleanSpaceHelloReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_HELLO, IsServer, target, source, args));
 
         public static void OnServerCleanSpaceRequested(object sender, ulong steamId, params object[] args)
             => ServerCleanSpaceRequested?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.SERVER_CS_REQUESTED, IsServer, steamId, MyID ?? 0, args));        
@@ -103,6 +106,10 @@ namespace Shared.Events
             => ConnectionStateChanged?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.CLIENT_CONNECTION_STATE_CHANGED, IsServer, steamId, new_state));
 
         public static void OnCleanSpaceChatterReceived(object sender, ulong source, ulong target, params object[] args)
-         => CleanSpaceChatterReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_HELLO, IsServer, source, target, args));
+         => CleanSpaceChatterReceived?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.CS_CHATTER, IsServer, target, source, args));
+
+        public static void OnCleanSpaceServerScannedPlugin(object sender, string source, Assembly asm)
+            => CleanSpaceServerScannedPlugin.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.SERVER_CS_SCANNNED_PLUGIN, true, source, asm));
     }   
+
 }

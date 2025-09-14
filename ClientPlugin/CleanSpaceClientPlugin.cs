@@ -3,10 +3,11 @@ using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
 using CleanSpaceShared.Settings;
 using CleanSpaceShared.Settings.Layouts;
+using ClientPlugin;
 using EmptyKeys.UserInterface;
-using NLog.Internal.Fakeables;
 using ProtoBuf;
 using Sandbox.Engine.Multiplayer;
+using Sandbox.Engine.Networking;
 using Sandbox.Game.GameSystems.Conveyors;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens;
@@ -18,6 +19,7 @@ using Shared.Hasher;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
+using Shared.Struct;
 using Shared.Util;
 using SpaceEngineers.Game.GUI;
 using Steamworks;
@@ -29,6 +31,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Input;
+using VRage;
 using VRage.FileSystem;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -100,7 +103,7 @@ namespace CleanSpaceShared
             Config.TokenValidTimeSeconds = TimeSpan.TicksPerSecond * 2;
             Log.Debug($"{PluginName} Loaded");
             init_events();
-            SessionParameterFactory.RegisterProviders();
+            ClientSessionParameterProviders.RegisterProviders();
         }
 
         private void init_events()
@@ -111,13 +114,16 @@ namespace CleanSpaceShared
             EventHub.ServerCleanSpaceFinalized += EventHub_ServerCleanSpaceFinalized;
             EventHub.CleanSpaceChatterReceived += EventHub_CleanSpaceChatterReceived;
             MyScreenManager.ScreenAdded += MyScreenManager_ScreenAdded; ;
-            MySession.OnUnloaded += MySession_OnUnloaded;
         }
 
         private bool acceptingChatter = true;
         private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
-            if (!acceptingChatter) return;
+            if (!acceptingChatter) {
+                Common.Logger.Debug("Received chatter, but not accepting it. Probably an echo.");
+                return; 
+            }
+
             object[] args = e.Args;
             try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1); }
             catch (Exception ex)
@@ -127,26 +133,28 @@ namespace CleanSpaceShared
             }
             CleanSpaceChatterPacket r = (CleanSpaceChatterPacket)args[0];
            
-            if (this.connectionChatterLenth > 0)
+            if (this.connectionChatterLenth > 1)
             {
-                this.lastServerNonce = this.currentServerNonce;
-                this.currentServerNonce = r.Nonce;
+                this.lastServerNonce = (string)this.currentServerNonce.Clone();
+                this.currentServerNonce = r.NonceS;
 
-                byte[] challengeResponse = SessionParameterFactory.AnswerChallenge(r.sessionParameters, this.serverFacingAddress, Sync.MyId, this.connectionSessionTarget, AppDomain.CurrentDomain.GetAssemblies().Length);
+                byte[] challengeResponse = SessionParameterFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt);
 
                 this.lastClientNonce = this.currentClientNonce;
                 this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(connectionSessionTarget, true);
+
                 var message = new CleanSpaceChatterPacket
                 {
                     SenderId = Sync.MyId,
                     TargetType = MessageTarget.Server,
                     Target = connectionSessionTarget,
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Nonce = this.currentServerNonce,
-                    sessionParameters = challengeResponse
+                    NonceS = this.currentServerNonce,
+                    NonceC = this.currentClientNonce,
+                    chatterParameters = challengeResponse
                 };
 
-                PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.lastServerNonce);
+                PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.currentServerNonce);
                 Common.Logger.Info($"Replied to a chatter from server...");
                 this.connectionChatterLenth -= 1;
             }
@@ -156,16 +164,17 @@ namespace CleanSpaceShared
                 PluginValidationRequest h = null;
                 try
                 {
-                    using (var ms = new MemoryStream(r.chatterPayload))
+                    h = ProtoUtil.Deserialize<PluginValidationRequest>(r.chatterPayload);
+
+                    if (h != null)
                     {
-                        Serializer.Deserialize<PluginValidationRequest>(ms);
+                        EventHub.OnServerCleanSpaceRequested(this, r.SenderId, h);
+                        return;
                     }
-                    EventHub.OnServerCleanSpaceRequested(this, r.SenderId, h);
-                    return;
                 }
                 catch (Exception ex)
                 {
-                    Common.Logger.Error($"{Common.PluginName} Failed to aquire payload." + ex.Message);
+                    Common.Logger.Error($"{Common.PluginName} Failed to aquire payload. [MSG:{ex.Message}] [STACK:{ex.StackTrace}]");
                     return;
                 }
 
@@ -180,50 +189,57 @@ namespace CleanSpaceShared
             this.connectionChatterLenth = 0;
             this.connectionSessionTarget = 0;
             this.lastServerNonce = null;
+            this.acceptingChatter = true;
+            this.acceptingHello = true;
         }
 
-        // Stage 1: Pending, Phase 1: Hello
+        private bool acceptingHello = true;
         private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
             object[] args = e.Args;
-            try {   MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1);   }
+            try {   MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, destVerify: Sync.MyId);   }
             catch (Exception ex) {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling a hello message from the server." + ex.Message);
                 return;
             }
             CleanSpaceHelloPacket r = (CleanSpaceHelloPacket)args[0];
 
-            SessionParameters parametersIn = r.sessionParameters;
+            if (!acceptingHello) return;
+            acceptingHello = false;
+
+            SessionParameters parametersIn = ProtoUtil.Deserialize<SessionParameters>(r.sessionParameters);
             this.connectionSessionSalt = parametersIn.sessionSalt;
             this.connectionChatterLenth = parametersIn.chatterLength;
             this.connectionSessionTarget = r.SenderId;
-            this.lastServerNonce = null;
-            this.currentServerNonce = r.Nonce;
+
+            this.lastServerNonce = String.Empty;
+            this.currentServerNonce = r.NonceS;
+
+            this.lastClientNonce = String.Empty;
             this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
+            
             this.serverFacingAddress = r.client_ip_echo;
 
-            SessionParameters parametersOut =
-                SessionParameterFactory.AnswerChallenge(parametersIn,
-                                                        this.serverFacingAddress,
-                                                        Sync.MyId,
-                                                        this.connectionSessionTarget,
-                                                        AppDomain.CurrentDomain.GetAssemblies().Length);
+            Common.Logger.Debug("Received params: " + Convert.ToBase64String(parametersIn));
+            byte[] parametersOut =
+                SessionParameterFactory.AnswerChallenge(parametersIn, r.NonceS, this.connectionSessionSalt);
 
-        
+            Common.Logger.Debug("Generated params: " + Convert.ToBase64String(parametersOut));
             var message = new CleanSpaceHelloPacket
             {
                 SenderId = Sync.MyId,
                 TargetType = MessageTarget.Server,
                 Target = connectionSessionTarget,
                 UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = this.currentServerNonce,          
+                NonceS = this.currentServerNonce,          
+                NonceC = this.currentClientNonce,
                 sessionParameters = parametersOut
             };
 
             // ordinarily, we would send a message whose token is encrypted with last server nonce as the extra key, but we dont have one yet. Thats fine, if it is null,
             // then the wrapper will use the per-message salt as the extra key. Both sides do not care about an expected nonce yet. Or shouldn't.
 
-            PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.lastServerNonce);
+            PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.currentServerNonce);
             Common.Logger.Info($"Replied to a hello from server {connectionSessionTarget}. Let's talk turn-key.");
         }
 
@@ -290,73 +306,102 @@ namespace CleanSpaceShared
                     MyGuiSandbox.AddScreen(pendingMessageBox);
                     hasPendingMessage = false;
                 }
+
+                ResetState();
             }
         }
 
-        private void MySession_OnUnloaded()
-        {
-          
-        }
-
-        private void MySession_OnLoading()
-        {           
-
-           
-        }
-
-        /*
-         * 
-         *  attestationChallenge = EncryptionUtil.EncryptBytesWithIV(this.clientHasherBytes, newNonce, this.clientSalt, messageIV).Concat(messageIV).ToArray(),
-                    attestationSignature = this.hasherSignature,
-                    Nonce = newNonce,
-                    Target = steamId,
-                    TargetType = MessageTarget.Client,
-                    UnixTimestamp = DateTime.Now.ToUnixTimestamp()
-         * */
         private void EventHub_ServerCleanSpaceRequested(object sender, CleanSpaceTargetedEventArgs e)
-        {
+        {           
             object[] args = e.Args;
-            try { MiscUtil.ArgsChecks<PluginValidationRequest>(e, 1); }
+            try
+            {
+                MiscUtil.ArgsChecks<PluginValidationRequest>(e, 1);
+            }
             catch (Exception ex)
             {
-                Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling a hello message from the server." + ex.Message);
+                Common.Logger.Error($"{Common.PluginName} ArgChecks failed handling a hello message from the server: {ex}");
                 return;
             }
-            PluginValidationRequest r = (PluginValidationRequest)args[0];
 
+            PluginValidationRequest r = args[0] as PluginValidationRequest;
 
-            byte[] IV = r.attestationChallenge.Range(r.attestationChallenge.Length - 12, r.attestationChallenge.Length).ToArray();
-            byte[] attestationBytes = new byte[r.attestationChallenge.Length - 12];
+            if (r.attestationChallenge == null)
+            {
+                Common.Logger.Error($"{Common.PluginName} attestationChallenge was null.");
+                return;
+            }
 
-            byte[] decryptedHasherBytes = EncryptionUtil.DecryptBytes(attestationBytes, this.currentServerNonce, this.connectionSessionSalt, IV);
-            if (!TokenUtility.SignPayloadBytes(r.attestationChallenge, this.connectionSessionSalt).SequenceEqual(r.attestationSignature))
+            PacketRegistry.Logger.Debug($"{PacketRegistry.PluginName}: Unpacking attestation (Challenge length: {r.attestationChallenge?.Length}).");
+
+            byte[] IV = r.attestationChallenge.Range(r.attestationChallenge.Length - 16, r.attestationChallenge.Length).ToArray();
+            byte[] attestationBytes = r.attestationChallenge.Range(0, r.attestationChallenge.Length - 16).ToArray();
+
+            this.lastServerNonce = currentServerNonce;
+            this.currentServerNonce = r.NonceS;
+            byte[] decryptedHasherBytes = EncryptionUtil.DecryptBytes(attestationBytes, currentServerNonce, this.connectionSessionSalt, IV);
+
+            if (r.attestationSignature == null)
+            {
+                Common.Logger.Error($"{Common.PluginName} attestationSignature was null.");
+                return;
+            }
+
+            if (!TokenUtility.SignPayloadBytes(decryptedHasherBytes, this.connectionSessionSalt).SequenceEqual(r.attestationSignature))
             {
                 var m = $"{Common.PluginName} Security violation in clean space request hasher. Signature does not match.";
                 Common.Logger.Error(m);
-                // This one is a bit more serious so let's throw and hope it crashes the client - they are being targeted.
                 throw new Exception(m);
-                return;
             }
 
-            this.lastServerNonce = this.currentServerNonce;
-            this.currentServerNonce = r.Nonce;
             this.lastClientNonce = this.currentClientNonce;
-            string newToken = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
+            this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
+
+            if (r.NonceS == null)
+                Common.Logger.Warning($"{Common.PluginName} r.NonceS was null.");
+
+            var pluginHashes = AssemblyScanner.GetPluginAssemblies()
+                ?.Select<Assembly, string>((a) =>
+                {
+                    try
+                    {
+                        return AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.NonceS));
+                    }
+                    catch (Exception ex)
+                    {
+                        Common.Logger.Error($"{Common.PluginName} Failed to fingerprint assembly {a.FullName}: {ex}");
+                        return null;
+                    }
+                })
+                .Where(h => h != null)
+                .ToList();
+
+            byte[] newSteamToken = new byte[1024];
+            if(!MyGameService.GetAuthSessionTicket(out var _, newSteamToken, out var length))
+            {
+                Common.Logger.Error($"{Common.PluginName} Couldn't get a new steam auth ticket...");
+            }
 
             var message = new PluginValidationResponse
             {
                 SenderId = Sync.MyId,
                 TargetType = MessageTarget.Server,
-                Target = r.SenderId,
+                Target = connectionSessionTarget,
                 UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Nonce = this.currentServerNonce,
-                PluginHashes = AssemblyScanner.GetPluginAssemblies().Select<Assembly, string>((a) => AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.Nonce))).ToList(),
-                attestationResponse = HasherRunner.ExecuteRunner(r.attestationChallenge)
+                NonceS = this.currentServerNonce,
+                NonceC = currentClientNonce,
+                PluginHashes = pluginHashes,
+                attestationResponse = HasherRunner.ExecuteRunner(decryptedHasherBytes),
+                newSteamToken = newSteamToken.Range(0, (int)length).ToArray(),
             };
-       
-            PacketRegistry.Send(message, new EndpointId(r.SenderId), newToken, this.lastServerNonce);
-            PacketRegistry.Logger.Info($"{PacketRegistry.PluginName}: Sending a response to validation request.");
+
+            if (message.attestationResponse == null)
+                Common.Logger.Warning($"{Common.PluginName} attestationResponse came back null.");
+
+            PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), currentClientNonce, currentServerNonce);
+            PacketRegistry.Logger.Info($"{PacketRegistry.PluginName}: Sent response to validation request.");
         }
+
 
         private void menuOpenEvent()
         {                       
@@ -368,7 +413,8 @@ namespace CleanSpaceShared
 
         private void LogMessage(MessageBase obj)
         {
-
+            byte[] array = new byte[1024];
+           
         }
      
         private void RegisterPackets()
@@ -391,7 +437,7 @@ namespace CleanSpaceShared
 
             PacketRegistry.Register<PluginValidationResponse>(
                111,
-               () => new ProtoPacketData<PluginValidationResponse>(), SecretPacketFactory<PluginValidationResponse>.handler<ProtoPacketData<PluginValidationResponse>>
+               () => new ProtoPacketData<PluginValidationResponse>()
             );
 
             PacketRegistry.Register<PluginValidationResult>(

@@ -1,5 +1,7 @@
 using CleanSpaceShared.Scanner;
+using Shared.Events;
 using Shared.Logging;
+using Shared.Plugin;
 using Shared.Struct;
 using System;
 using System.Collections.Generic;
@@ -10,6 +12,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using VRage.Compression;
+using VRage.Plugins;
 
 namespace CleanSpace
 {
@@ -54,34 +57,49 @@ namespace CleanSpace
 
         private string[] validFormats = new string[] { ".zip" , ".dll"};
 
+
+        private static bool IsValidPlugin(Assembly assembly)
+        {
+            if (assembly.FullName.Contains("Sandbox.Game, Version")) return false;
+            Type[] types;
+
+            try { types = assembly.GetTypes(); }
+            catch (ReflectionTypeLoadException ex) { types = ex.Types.Where(t => t != null).ToArray(); }
+            catch { return false; }
+            return types.Any(t => typeof(IPlugin).IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
+        }
+
+        private static bool IsValidPlugin(string dllPath)
+        {
+            if (string.IsNullOrWhiteSpace(dllPath) || !File.Exists(dllPath))
+                return false;
+
+            try
+            {
+                var assembly = Assembly.LoadFile(dllPath);
+                return IsValidPlugin(assembly);
+            }
+            catch (Exception ex)
+            {
+                Common.Logger.Error($" Failed to load {dllPath}: {ex.GetType().Name} - {ex.Message}");
+                return false;
+            }
+        }
+
         public static bool AddPluginToPluginList(string file)
         {
-            if (AssemblyScanner.IsValidPlugin(file))
+            if (IsValidPlugin(file))
             {
-                Assembly a = AssemblyScanner.GetAssembly(file);
-                String assemblyHash = AssemblyScanner.GetAssemblyFingerprint(a);
-                String version = a.GetName().Version.ToString();
-                String name = a.GetName().Name;
-                PluginListEntry newEntry = new PluginListEntry()
-                {
-                    AssemblyName = name,
-                    Hash = assemblyHash,
-                    LastHashed = DateTime.Now,
-                    Version = version,
-                    Name = name
-                };
-                Log?.Info("Added: " + newEntry.ToString());
-                var original = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
-                var newList = new ObservableCollection<PluginListEntry>(original) { newEntry };
-                CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins = newList;
-                Instance.PluginHashGrid.ItemsSource = newList;
+                Assembly a = Assembly.LoadFile(file);
+                EventHub.OnCleanSpaceServerScannedPlugin(typeof(ConfigView), file, a);                
+                Instance.PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
                 return true;
             }
             else
             {
                 MessageBox.Show("Not a valid plugin library. Only plugins that contain a class compatible VRage's IPlugin interface are valid here.");
             }
-                return false;
+            return false;
         }
 
         private void PluginDropArea_Drop(object sender, DragEventArgs e)
@@ -132,7 +150,7 @@ namespace CleanSpace
                 {
                     var response = MessageBox.Show(
                         "Warning: One or more of the files you dropped appear to contain DLLs (which may or may not be plugins). In certain situations, these can execute code on your machine.\n\n" +
-                        "Only continue if you trust the source. Do you want to proceed?",
+                        "Only continue if you trust the source (Have any enemies with an engineering department?). Do you want to proceed?",
                         "Security Warning",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning

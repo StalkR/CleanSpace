@@ -54,7 +54,7 @@ namespace CleanSpaceShared.Networking
                 int bytesRead = stream.Read(buffer, read, remaining - read);
                 PacketRegistry.Logger.Debug($"{PacketRegistry.PluginName}: Read {bytesRead} bytes from stream at offset {read}");
                 if (bytesRead == 0)
-                    throw new EndOfStreamException("Stream ended prematurely");
+                    throw new EndOfStreamException("E20: Stream ended prematurely");
                 read += bytesRead;
             }
 
@@ -65,7 +65,7 @@ namespace CleanSpaceShared.Networking
         public T GetMessage(string key = null)
         {
             if (_buffer == null)
-                throw new InvalidOperationException("No data to deserialize");
+                throw new InvalidOperationException("E21: No data to deserialize");
 
             Envelope n = null;
             MemoryStream ms;
@@ -81,7 +81,7 @@ namespace CleanSpaceShared.Networking
             }
             catch (Exception e) {
 
-                throw new InvalidOperationException("Failed to unwrap message with key: " + e.Message);
+                throw new InvalidOperationException("E22: Failed to unwrap message with key: " + e.Message);
             }
             return result;
         }

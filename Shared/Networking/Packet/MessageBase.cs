@@ -21,7 +21,8 @@ namespace CleanSpaceShared.Networking
         [ProtoMember(2)] public MessageTarget TargetType;
         [ProtoMember(3)] public ulong Target;
         [ProtoMember(4)] public long UnixTimestamp;
-        [ProtoMember(5)] public string Nonce;
+        [ProtoMember(5)] public string NonceS;
+        [ProtoMember(6)] public string NonceC;
         [ProtoIgnore] public bool should_compress = false;
         public abstract void ProcessClient<T>(T msg) where T : MessageBase;
         public abstract void ProcessServer<T>(T msg) where T : MessageBase;

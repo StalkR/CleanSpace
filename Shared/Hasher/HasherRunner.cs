@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Runtime.CompilerServices;
 
 namespace Shared.Hasher
 {
@@ -25,6 +26,7 @@ namespace Shared.Hasher
                 "System.Text"
             };
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ValidateHasherRunnerBytes(byte[] dllBytes)
         {
             using (var ms = new MemoryStream(dllBytes))
@@ -96,9 +98,10 @@ namespace Shared.Hasher
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         static void ValidateOpcodeWhitelist(byte[] il)
         {            
-                    var disallowed = new HashSet<ushort> {
+            var disallowed = new HashSet<ushort> {
                 0x27, /* Jmp */
                 0xFE09, /* Unaligned */
                 0xFE0A, /* Volatile */
@@ -119,56 +122,7 @@ namespace Shared.Hasher
             }
         }
 
-        public void ValidateSourceSyntaxOrThrow(string source)
-        {
-            var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.CSharp7_3));
-            var root = (CompilationUnitSyntax)tree.GetRoot();
-            var allowedUsings = new HashSet<string>{
-                    "System","System.IO","System.Linq","System.Reflection",
-                    "System.Security.Cryptography","System.Text"
-                };
-            if (root.Usings.Any(u => !allowedUsings.Contains(u.Name.ToString())))
-                throw new InvalidOperationException("Disallowed using directive.");
-
-            var classes = root.DescendantNodes().OfType<ClassDeclarationSyntax>().ToArray();
-            if (classes.Length != 1) throw new InvalidOperationException("Unexpected type count.");
-            var cls = classes[0];
-            if (cls.Identifier.Text != "Hasher") throw new InvalidOperationException("Class must be Hasher.");
-            var mods = cls.Modifiers.Select(m => m.Text).ToHashSet();
-            if (!mods.Contains("public") || !mods.Contains("static"))
-                throw new InvalidOperationException("Class must be public static.");
-
-            if (cls.AttributeLists.Count > 0) throw new InvalidOperationException("Attributes not allowed.");
-            if (cls.Members.OfType<TypeDeclarationSyntax>().Any())
-                throw new InvalidOperationException("Nested types not allowed.");
-
-            var methods = cls.Members.OfType<MethodDeclarationSyntax>().ToArray();
-            if (methods.Length != 1) throw new InvalidOperationException("Unexpected method count.");
-
-            bool HasMethod(string ret, string name, params (string type, string id)[] ps)
-            {
-                var m = methods.FirstOrDefault(x => x.Identifier.Text == name);
-                if (m == null) return false;
-                if (m.ReturnType.ToString() != ret) return false;
-                var parms = m.ParameterList.Parameters.Select(p => (p.Type?.ToString(), p.Identifier.Text)).ToArray();
-                if (parms.Length != ps.Length) return false;
-                for (int i = 0; i < ps.Length; i++)
-                    if (ps[i].type != parms[i].Item1 || ps[i].id != parms[i].Item2) return false;
-                if (m.Modifiers.Any(mm => (mm.Text == "unsafe" || mm.Text == "extern" || mm.Text == "async")))
-                    return false;
-                if (m.AttributeLists.Count > 0) return false;
-                return true;
-            }
-
-            if (!HasMethod("string", "ComputeHash"))
-                throw new InvalidOperationException("ComputeHash signature mismatch.");
-
-            var forbidden = new[] { SyntaxKind.UnsafeStatement, SyntaxKind.FixedStatement, SyntaxKind.StackAllocArrayCreationExpression };
-            if (root.DescendantNodes().Any(n => forbidden.Contains(n.Kind())))
-                throw new InvalidOperationException("Unsafe constructs not allowed.");
-
-        }
-
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static string ExecuteRunner(byte[] assemblyBytes, params object[] args)
         {
             if (assemblyBytes == null || assemblyBytes.Length == 0)

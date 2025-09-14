@@ -1,14 +1,19 @@
 ﻿#define USE_HARMONY
 
 using CleanSpaceShared.Networking;
+using CleanSpaceShared.Scanner;
 using HarmonyLib;
 using Sandbox.Game;
 using Shared.Config;
+using Shared.Events;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
+using Shared.Struct;
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Controls;
@@ -18,6 +23,7 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
+using TorchPlugin;
 using TorchPlugin.Tracker;
 using TorchPlugin.Util;
 using VRage.GameServices;
@@ -48,7 +54,7 @@ namespace CleanSpace
         private ConfigView control;
 
         private TorchSessionManager sessionManager;
-
+        private TorchPlugin.CleanSpaceAssemblyManager assemblyManager;
         private ClientSessionManager cleanSpaceClientManager;
         private bool initialized;
         private bool failed;
@@ -91,11 +97,17 @@ namespace CleanSpace
             }            
          
             cleanSpaceClientManager = new ClientSessionManager();
+
+         
+            Common.Logger.Info($"Torch directory is {AppDomain.CurrentDomain.BaseDirectory}");           
+
+            assemblyManager = new TorchPlugin.CleanSpaceAssemblyManager(AppDomain.CurrentDomain.BaseDirectory);
             sessionManager.SessionStateChanged += SessionStateChanged;
 
-            SessionParameterFactory.RegisterProviders();
-
+            ServerSessionParameterProviders.RegisterProviders();
+            assemblyManager.Init_Events();
             initialized = true;
+            
             
         }
 
@@ -120,8 +132,11 @@ namespace CleanSpace
             if(events_initialized) return;
             events_initialized = true;
             cleanSpaceClientManager.Init_Events();
+           
+
         }
-  
+
+      
 
         private void SessionStateChanged(ITorchSession session, TorchSessionState newstate)
         {
@@ -152,7 +167,7 @@ namespace CleanSpace
         private void RegisterPackets()
         {
             PacketRegistry.Register<CleanSpaceHelloPacket>(
-              107, () => new ProtoPacketData<CleanSpaceHelloPacket>(), SecretPacketFactory<CleanSpaceHelloPacket>.handler<ProtoPacketData<CleanSpaceHelloPacket>>
+              107, () => new ProtoPacketData<CleanSpaceHelloPacket>(), SecretPacketFactory<CleanSpaceHelloPacket>.handler < ProtoPacketData<CleanSpaceHelloPacket>>
             );
 
             PacketRegistry.Register < CleanSpaceChatterPacket>(

@@ -17,7 +17,7 @@ namespace Shared.Util{
         {
             if (m == null)
                 throw new Exception("Null message passed to receiving checks.");
-            if (m.Nonce == null)
+            if (m.NonceS == null)
                 throw new Exception("Invalid message received with a null token.");
             if (m.SenderId == Sync.MyId)
                 throw new Exception("Received a packet that I sent? That's not right.");
@@ -68,9 +68,11 @@ namespace Shared.Util{
             }
         }
 
-        internal static void ArgsChecks<T>(CleanSpaceTargetedEventArgs e, int v) where T : MessageBase
+        internal static void ArgsChecks<T>(CleanSpaceTargetedEventArgs e, int v, ulong destVerify = 0, ulong srcVerify = 0) where T : MessageBase
         {
             if (e == null) throw new Exception($"Args given were null. ");
+            if (destVerify > 0 && e.Target != destVerify) throw new Exception($"Wrong destination. ");
+            if (srcVerify > 0 && e.Source != srcVerify) throw new Exception($"Wrong source. ");
             if (e.Args.Length == 0) throw new Exception($"Args given had a count of zero.");
             if (e.Args.Length < v) throw new Exception($"Args given with length {e.Args.Length} did meet the minimum length of length {v} where message data is expected.");
             if (e.Args[v-1] == null) throw new Exception($"Message data in args was null.");
