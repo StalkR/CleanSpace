@@ -1,11 +1,9 @@
-using CleanSpaceShared.Scanner;
 using Shared.Events;
 using Shared.Logging;
 using Shared.Plugin;
 using Shared.Struct;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -28,9 +26,11 @@ namespace CleanSpace
             InitializeComponent();
             DataContext = CleanSpaceTorchPlugin.Instance.Config;
             PluginHashGrid.ItemsSource = CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins;
-
+            
             Instance.PluginListModeCombo.SelectedIndex = System.Enum.GetNames(typeof(PluginListType)).ToList().IndexOf(CleanSpaceTorchPlugin.Instance.Config.PluginListType.ToString());
             Instance.PluginMatchActionCombo.SelectedIndex = System.Enum.GetNames(typeof(ListMatchAction)).ToList().IndexOf(CleanSpaceTorchPlugin.Instance.Config.ListMatchAction.ToString());
+        
+           
         }
 
 
@@ -116,7 +116,7 @@ namespace CleanSpace
                 {
                     Log.Debug("No valid files were dropped into the box.");
                     MessageBox.Show(
-                        "None of the files you dropped are valid '.zip' archives containing the appropriate mod information. " +
+                        "None of the files you dropped are valid '.zip' archives containing the appropriate plugin assembly information. " +
                         "See the documentation included on the security tab for more information.",
                         "Invalid Files",
                         MessageBoxButton.OK, MessageBoxImage.Warning                       

@@ -1,18 +1,12 @@
 ﻿using CleanSpace;
 using CleanSpaceShared.Scanner;
-using NLog.Fluent;
 using Shared.Events;
 using Shared.Plugin;
 using Shared.Struct;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Torch;
 
 namespace TorchPlugin
 {
@@ -30,7 +24,24 @@ namespace TorchPlugin
             cs_assembly_storage_dir = Path.Combine(cs_data_storage_dir, "AssemblyStore");
             cs_adv_log_dir = Path.Combine(cs_data_storage_dir, "AdvancedLogs");
             InitializeDirectories();
+
+            CleanSpaceTorchPlugin.Instance.Config.AnalyzedPlugins.CollectionChanged += AnalyzedPlugins_CollectionChanged;
             Instance = this;
+        }
+
+        private void AnalyzedPlugins_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
+            {
+                foreach (var item in e.OldItems)
+                {
+                    var p = item as PluginListEntry;
+                    if (File.Exists(p.Location))
+                    {
+                        File.Delete(p.Location);
+                    }
+                }
+            }
         }
 
         private void InitializeDirectories()

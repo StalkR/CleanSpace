@@ -2,13 +2,11 @@
 using CleanSpace.Patch;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
-using ProtoBuf;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
 using Shared.Config;
 using Shared.Events;
-using Shared.Hasher;
 using Shared.Logging;
 using Shared.Plugin;
 using Shared.Struct;
@@ -16,9 +14,7 @@ using Shared.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,6 +62,7 @@ namespace TorchPlugin.Tracker
                 connectionState = value;
             }
         }
+
         SessionParameters chatterParameters;
         SessionParameters sessionParameters;
         private byte[] clientSalt;

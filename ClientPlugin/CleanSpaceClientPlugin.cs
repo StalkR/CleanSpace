@@ -4,14 +4,9 @@ using CleanSpaceShared.Scanner;
 using CleanSpaceShared.Settings;
 using CleanSpaceShared.Settings.Layouts;
 using ClientPlugin;
-using EmptyKeys.UserInterface;
-using ProtoBuf;
-using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
-using Sandbox.Game.GameSystems.Conveyors;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens;
-using Sandbox.Game.World;
 using Sandbox.Graphics.GUI;
 using Shared.Config;
 using Shared.Events;
@@ -21,8 +16,6 @@ using Shared.Patches;
 using Shared.Plugin;
 using Shared.Struct;
 using Shared.Util;
-using SpaceEngineers.Game.GUI;
-using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,15 +23,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using System.Windows.Input;
-using VRage;
 using VRage.FileSystem;
 using VRage.Game;
-using VRage.Game.ModAPI;
 using VRage.GameServices;
 using VRage.Network;
 using VRage.Plugins;
-using VRage.Steam;
 using VRageMath;
 
 namespace CleanSpaceShared
@@ -70,11 +59,10 @@ namespace CleanSpaceShared
         private string currentServerNonce;
         private string lastClientNonce;
         private string currentClientNonce;
+
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public void Init(object gameInstance)
         {
-
-
 
 #if DEBUG
             // Allow the debugger some time to connect once the plugin assembly is loaded
@@ -120,25 +108,23 @@ namespace CleanSpaceShared
         private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
             if (!acceptingChatter) {
-                Common.Logger.Debug("Received chatter, but not accepting it. Probably an echo.");
+                    Common.Logger.Debug("Received chatter, but not accepting it. Probably an echo.");
                 return; 
             }
 
             object[] args = e.Args;
             try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1); }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling chatter from the server." + ex.Message);
                 return;
             }
+
             CleanSpaceChatterPacket r = (CleanSpaceChatterPacket)args[0];
            
             if (this.connectionChatterLenth > 1)
             {
                 this.lastServerNonce = (string)this.currentServerNonce.Clone();
                 this.currentServerNonce = r.NonceS;
-
-                byte[] challengeResponse = SessionParameterFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt);
 
                 this.lastClientNonce = this.currentClientNonce;
                 this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(connectionSessionTarget, true);
@@ -151,7 +137,7 @@ namespace CleanSpaceShared
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                     NonceS = this.currentServerNonce,
                     NonceC = this.currentClientNonce,
-                    chatterParameters = challengeResponse
+                    chatterParameters = SessionParameterFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt)
                 };
 
                 PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.currentServerNonce);
@@ -354,6 +340,8 @@ namespace CleanSpaceShared
                 throw new Exception(m);
             }
 
+            HasherRunner.ValidateHasherRunnerBytes(decryptedHasherBytes);
+            
             this.lastClientNonce = this.currentClientNonce;
             this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
 
@@ -451,8 +439,6 @@ namespace CleanSpaceShared
             try
             {
                
-                // TODO: Save state and close resources here, called when the game exists (not guaranteed!)
-                // IMPORTANT: Do NOT call harmony.UnpatchAll() here! I t may break other plugins.
             }
             catch (Exception ex)
             {
@@ -468,8 +454,7 @@ namespace CleanSpaceShared
                 return;
 
             try
-            {
-                CustomUpdate();
+            {           
                 Tick++;
             }
             catch (Exception ex)
@@ -477,12 +462,6 @@ namespace CleanSpaceShared
                 Log.Critical(ex, "Update failed");
                 failed = true;
             }
-        }
-
-        private void CustomUpdate()
-        {
-            // TODO: Put your update code here. It is called on every simulation frame!
-            PatchHelpers.PatchUpdates();
         }
 
         // ReSharper disable once UnusedMember.Global

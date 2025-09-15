@@ -1,19 +1,14 @@
 ﻿#define USE_HARMONY
 
 using CleanSpaceShared.Networking;
-using CleanSpaceShared.Scanner;
 using HarmonyLib;
 using Sandbox.Game;
 using Shared.Config;
-using Shared.Events;
 using Shared.Logging;
 using Shared.Patches;
 using Shared.Plugin;
-using Shared.Struct;
 using System;
-using System.Collections.ObjectModel;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Controls;
@@ -23,7 +18,6 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
-using TorchPlugin;
 using TorchPlugin.Tracker;
 using TorchPlugin.Util;
 using VRage.GameServices;

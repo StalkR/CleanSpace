@@ -60,7 +60,6 @@ namespace CleanSpace
 
         private static string Secret => Shared.Plugin.Common.InstanceSecret;
 
-        // Every thousand or so nonces we cleanup. Its not a big deal, they aren't very big and aren't going to pile up too much. Maybe.
         private static int pruneIntervalCounter = 0;
         private static int pruneInterval = 1000;
         public static string RegisterNonceForPlayer(ulong steamId, bool force = false)

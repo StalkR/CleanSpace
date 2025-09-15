@@ -1,8 +1,5 @@
-﻿using Shared.Logging;
-using Shared.Plugin;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -14,6 +11,7 @@ namespace CleanSpaceShared.Scanner
 {    
     internal sealed class AssemblyScanner
     {
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static List<Assembly> GetPluginAssemblies()
         {
@@ -21,6 +19,7 @@ namespace CleanSpaceShared.Scanner
             return AppDomain.CurrentDomain.GetAssemblies()
                 .Where((asm)=> IsValidPlugin(asm)).ToList();
         }
+
         internal struct PluginAssemblyInfo
         {
             public string Name;
@@ -43,6 +42,7 @@ namespace CleanSpaceShared.Scanner
         private static bool IsValidPlugin(Assembly assembly)
         {
             if (assembly.FullName.Contains("Sandbox.Game, Version")) return false;
+            if (assembly.FullName.Contains("Legacy, Version")) return false;
             Type[] types;
                         
             try                                     {   types = assembly.GetTypes();                            }

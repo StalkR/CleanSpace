@@ -38,9 +38,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResponse.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResult.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Patches\ExamplePatch.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Patches\ExampleServerPatch.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Patches\ExampleTranspilerPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Patches\PatchHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Plugin\Common.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Plugin\ICommonPlugin.cs" />

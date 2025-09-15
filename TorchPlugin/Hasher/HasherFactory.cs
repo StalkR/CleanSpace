@@ -59,6 +59,25 @@ namespace TorchPlugin.Hasher
                 "        foreach (var accessor in prop.GetAccessors(true))\r\n" +
                 "            sb.AppendLine(accessor.ToString());\r\n" +
                 "    }\r\n" +
+                "}",
+
+                "foreach (var type in asm.GetTypes().OrderBy(t => t.FullName))\r\n" +
+                "{\r\n" +
+                "    foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))\r\n" +
+                "    {\r\n" +
+                "        try\r\n" +
+                "        {\r\n" +
+                "            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);\r\n" +
+                "            var ptr = method.MethodHandle.GetFunctionPointer();\r\n" +
+                "            bool hasIL = method.GetMethodBody()?.GetILAsByteArray()?.Length > 0;\r\n" +
+                "            bool detoured = hasIL && ptr == IntPtr.Zero;\r\n" +
+                "            sb.AppendLine($\"{method} :: Detoured={detoured}\");\r\n" +
+                "        }\r\n" +
+                "        catch (Exception ex)\r\n" +
+                "        {\r\n" +
+                "            sb.AppendLine($\"{method} :: Error={ex.Message}\");\r\n" +
+                "        }\r\n" +
+                "    }\r\n" +
                 "}"
             };
 
