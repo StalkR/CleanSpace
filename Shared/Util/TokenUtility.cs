@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Shared.Util
 {
-    public static class TokenUtility
+    internal static class TokenUtility
     {
         private static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(5);
-
-        public static string GenerateToken(string sharedSecret, DateTimeOffset expiryTime, string purpose = "default")
+        internal static string GenerateToken(string sharedSecret, DateTimeOffset expiryTime, string purpose = "default")
         {
             long expiryUnix = expiryTime.ToUnixTimeSeconds();
             byte[] nonceBytes = new byte[16];
@@ -26,7 +23,7 @@ namespace Shared.Util
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(combined));
         }
 
-        public static bool IsTokenValid(string token, string sharedSecret, string expectedPurpose = "default")
+        internal static bool IsTokenValid(string token, string sharedSecret, string expectedPurpose = "default")
         {
             string payload;
             try
@@ -84,20 +81,14 @@ namespace Shared.Util
             return true;
         }
 
-        public static string SignPayload(string payload, byte[] key)
+        internal static string SignPayload(string payload, byte[] key)
         {
             var hmac = new HMACSHA512(key);
             byte[] signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
             return Convert.ToBase64String(signature);
         }
 
-        public static string SignPayload(byte[] payload, byte[] key)
-        {
-            var hmac = new HMACSHA512(key);
-            byte[] signature = hmac.ComputeHash(payload);
-            return Convert.ToBase64String(signature);
-        }
-        public static byte[] SignPayloadBytes(byte[] payload, byte[] key)
+        internal static byte[] SignPayloadBytes(byte[] payload, byte[] key)
         {
             var hmac = new HMACSHA512(key);
             return hmac.ComputeHash(payload);

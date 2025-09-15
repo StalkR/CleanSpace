@@ -1,8 +1,6 @@
 ﻿using CleanSpace;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
-using CleanSpaceShared.Settings;
-using CleanSpaceShared.Settings.Layouts;
 using ClientPlugin;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
@@ -12,7 +10,6 @@ using Shared.Config;
 using Shared.Events;
 using Shared.Hasher;
 using Shared.Logging;
-using Shared.Patches;
 using Shared.Plugin;
 using Shared.Struct;
 using Shared.Util;
@@ -38,7 +35,6 @@ namespace CleanSpaceShared
     {
         public const string PluginName = "Clean Space";
         public static CleanSpaceClientPlugin Instance { get; private set; }
-        private SettingsGenerator settingsGenerator;
         public long Tick { get; private set; }
         private static bool failed;
 
@@ -119,10 +115,8 @@ namespace CleanSpaceShared
             Thread.Sleep(100);
 #endif
 
-
             MyGuiScreenMainMenuBase.OnOpened = menuOpenEvent;
             Instance = this;
-            Instance.settingsGenerator = new SettingsGenerator();
 
             Log.Info("Loading");
 
@@ -130,14 +124,8 @@ namespace CleanSpaceShared
             config = PersistentConfig<PluginConfig>.Load(Log, configPath);
 
             var gameVersion = MyFinalBuildConstants.APP_VERSION_STRING.ToString();
-
             Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath, "Clean Space", false, Logger);
 
-          /*  if (!PatchHelpers.HarmonyPatchAll(Log, new Harmony(PluginName)))
-            {
-                failed = true;
-                return;
-            }*/
             Config.TokenValidTimeSeconds = TimeSpan.TicksPerSecond * 2;
             Log.Debug($"{PluginName} Loaded");
             init_events();
@@ -407,8 +395,7 @@ namespace CleanSpaceShared
                 Common.Logger.Warning($"{Common.PluginName} r.NonceS was null.");
 
             var pluginHashes = AssemblyScanner.GetPluginAssemblies()
-                ?.Select<Assembly, string>((a) =>
-                {
+                ?.Select<Assembly, string>((a) =>{
                     try
                     {
                         return AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.NonceS));
@@ -523,11 +510,5 @@ namespace CleanSpaceShared
             }
         }
 
-        // ReSharper disable once UnusedMember.Global
-        public void OpenConfigDialog()
-        {
-            Instance.settingsGenerator.SetLayout<Simple>();
-            MyGuiSandbox.AddScreen(Instance.settingsGenerator.Dialog);
-        }
     }
 }
