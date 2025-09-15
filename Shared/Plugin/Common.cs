@@ -35,15 +35,19 @@ namespace Shared.Plugin
         };
 
         public static string InstanceSecret = _instanceSecret != null ? _instanceSecret :  (_instanceSecret = TokenUtility.GenerateToken(DateTime.UtcNow.ToLongTimeString(), DateTime.UtcNow.AddDays(1), "secret"));
-        public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger)
+        public static void SetPlugin(ICommonPlugin plugin, string gameVersion, string storageDir, string pluginName, bool isServer, IPluginLogger logger, IPluginConfig pluginConfig = null)
         {
             Plugin = plugin;
             Logger = logger;
-            Config = plugin.Config;
+            if(plugin.Config != null)
+                Config = plugin.Config;
+            else if(pluginConfig != null)
+                Config = pluginConfig;
             PluginName = pluginName;
             IsServer = isServer;
             GameVersion = gameVersion;
-            DataDir = Path.Combine(storageDir, "CleanSpace");
+            if(DataDir != null)
+                DataDir = Path.Combine(storageDir, "CleanSpace");
             PatchHelpers.Configure();
         }
     }

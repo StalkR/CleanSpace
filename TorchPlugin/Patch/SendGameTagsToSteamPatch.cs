@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Text;
 using VRage.Game;
 using VRage.Library.Utils;
-namespace TorchPlugin.Patch
+namespace CleanSpaceTorch.Patch
 {
     [HarmonyPatch(typeof(MyDedicatedServer), "SendGameTagsToSteam")]
     internal static class MyDedicatedServer_SendGameTagsToSteam_Patch

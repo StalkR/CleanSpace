@@ -39,6 +39,11 @@ namespace Shared.Config
             Path = path;
             Data = data;
         }
+        public PersistentConfig(T data = null)
+        {
+            Path = null;
+            Data = data;
+        }
 
         private void SaveLater()
         {
@@ -52,6 +57,10 @@ namespace Shared.Config
 
         public static PersistentConfig<T> Load(IPluginLogger log, string path)
         {
+            if( path == null)
+            {
+                return null;
+            }
             try
             {
                 if (File.Exists(path))
@@ -111,5 +120,6 @@ namespace Shared.Config
                 // Ignored
             }
         }
+
     }
 }

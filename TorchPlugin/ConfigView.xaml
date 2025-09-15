@@ -55,7 +55,7 @@
                     <ComboBox Name="PluginListModeCombo" Margin="5" Width="200" SelectedValue="{Binding PluginListType}" ItemsSource="{Binding PluginListTypes}">
                     </ComboBox>
 
-                    <TextBlock Text="On Match Action" Margin="5"/>
+                    <TextBlock Text="Conflict Action" Margin="5"/>
                     <ComboBox Name="PluginMatchActionCombo" Margin="5" Width="200" SelectedValue="{Binding ListMatchAction}" ItemsSource="{Binding ListMatchActions}">
                         
                     </ComboBox>

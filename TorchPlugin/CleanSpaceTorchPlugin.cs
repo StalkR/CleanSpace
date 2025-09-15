@@ -18,8 +18,8 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
-using TorchPlugin.Tracker;
-using TorchPlugin.Util;
+using CleanSpaceTorch.Tracker;
+using CleanSpaceTorch.Util;
 using VRage.GameServices;
 using VRage.Utils;
 
@@ -48,7 +48,7 @@ namespace CleanSpace
         private ConfigView control;
 
         private TorchSessionManager sessionManager;
-        private TorchPlugin.CleanSpaceAssemblyManager assemblyManager;
+        private CleanSpaceTorch.CleanSpaceAssemblyManager assemblyManager;
         private ClientSessionManager cleanSpaceClientManager;
         private bool initialized;
         private bool failed;
@@ -95,28 +95,13 @@ namespace CleanSpace
          
             Common.Logger.Info($"Torch directory is {AppDomain.CurrentDomain.BaseDirectory}");           
 
-            assemblyManager = new TorchPlugin.CleanSpaceAssemblyManager(AppDomain.CurrentDomain.BaseDirectory);
+            assemblyManager = new CleanSpaceTorch.CleanSpaceAssemblyManager(AppDomain.CurrentDomain.BaseDirectory);
             sessionManager.SessionStateChanged += SessionStateChanged;
 
             ServerSessionParameterProviders.RegisterProviders();
             assemblyManager.Init_Events();
             initialized = true;
             
-            
-        }
-
-        private void Static_ClientJoined(ulong arg1, string arg2)
-        {
-         
-        }
-
-        private void Static_ClientKicked(ulong obj)
-        {
-           
-        }
-
-        private void Static_ClientLeft(ulong arg1, MyChatMemberStateChangeEnum arg2)
-        {
             
         }
 
@@ -128,9 +113,7 @@ namespace CleanSpace
             cleanSpaceClientManager.Init_Events();
            
 
-        }
-
-      
+        }      
 
         private void SessionStateChanged(ITorchSession session, TorchSessionState newstate)
         {

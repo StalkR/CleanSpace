@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 using static SessionParameterFactory;
 using static SteamKit2.Internal.CMsgClientPersonaState.Friend;
 
-namespace TorchPlugin.Util
+namespace CleanSpaceTorch.Util
 {
     public static class NGramComparer
     {

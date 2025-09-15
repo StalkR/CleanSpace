@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 
-namespace TorchPlugin
+namespace CleanSpaceTorch
 {
     class CleanSpaceAssemblyManager
     {

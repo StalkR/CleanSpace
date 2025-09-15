@@ -9,7 +9,7 @@ using System.Reflection.Emit;
 using System.Text;
 
 
-namespace TorchPlugin.Util
+namespace CleanSpaceTorch.Util
 {
 
     public class ILInstruction

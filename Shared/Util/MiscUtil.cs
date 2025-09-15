@@ -68,6 +68,7 @@ namespace Shared.Util{
             }
         }
 
+
         internal static void ArgsChecks<T>(CleanSpaceTargetedEventArgs e, int v, ulong destVerify = 0, ulong srcVerify = 0) where T : MessageBase
         {
             if (e == null) throw new Exception($"Args given were null. ");

@@ -7,7 +7,7 @@
     <ProjectGuid>{AC501074-B362-4ECB-B899-A173D691EF8F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TorchPlugin</RootNamespace>
+    <RootNamespace>CleanSpaceTorch</RootNamespace>
     <AssemblyName>CleanSpace</AssemblyName>
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -517,7 +517,6 @@
     <Compile Include="Patch\SendGameTagsToSteamPatch.cs" />
     <Compile Include="Tracker\ClientSession.cs" />
     <Compile Include="Util\ILReader.cs" />
-    <Compile Include="Util\JITReader.cs" />
     <Compile Include="Util\ServerSessionParameterProviders.cs" />
     <Compile Include="Util\SessionParameterValidator.cs" />
     <Compile Include="ViewModelConfig.cs" />

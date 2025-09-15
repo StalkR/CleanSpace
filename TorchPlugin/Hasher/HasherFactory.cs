@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using VRage.Utils;
 
-namespace TorchPlugin.Hasher
+namespace CleanSpaceTorch.Hasher
 {
 
     internal sealed class HasherFactory

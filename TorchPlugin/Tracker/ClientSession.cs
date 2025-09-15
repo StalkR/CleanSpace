@@ -18,23 +18,24 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using TorchPlugin.Hasher;
-using TorchPlugin.Util;
+using CleanSpaceTorch.Hasher;
+using CleanSpaceTorch.Util;
 using VRage;
 using VRage.GameServices;
 using VRage.Network;
 
-namespace TorchPlugin.Tracker
+namespace CleanSpaceTorch.Tracker
 {
     public enum CS_CLIENT_STATE
     {
         PENDING,
+        CHATTING,
         VALIDATION_REQUESTED,
         AWAITING_VALIDATION,
- 
         VALIDATION_RESPONDED,
         VALIDATION_FINALIZED,
-        CONNECTED
+        CONNECTED,
+        DISCONNECTED
     }
 
     public class ClientSession
@@ -48,8 +49,8 @@ namespace TorchPlugin.Tracker
         DateTime nextValidationTime;
         ValidationResultData? validationResultData;
         
-        byte[] clientHasherBytes;
-        byte[] hasherSignature;
+        private byte[] clientHasherBytes;
+        private byte[] hasherSignature;
         int[] clientHasherSequence;
 
         private CS_CLIENT_STATE connectionState;
@@ -75,6 +76,10 @@ namespace TorchPlugin.Tracker
      
         bool events_initialized = false;
         private ClientSessionManager Manager => ClientSessionManager.Instance;
+
+        public DateTime SessionStartTime { get => sessionStartTime; set => sessionStartTime = value; }
+        public DateTime SessionEndTime { get => sessionEndTime; set => sessionEndTime = value; }
+
         public ClientSession(ulong steamId, ConnectedClientDataMsg initialMsg)
         {
           
@@ -90,8 +95,9 @@ namespace TorchPlugin.Tracker
                 ServiceName = (string)initialMsg.ServiceName.Clone(),
                 Token = (byte[])initialMsg.Token.Clone(),
             };
-            this.connectionState = CS_CLIENT_STATE.PENDING;
-            this.sessionStartTime = DateTime.UtcNow;
+
+            this.ConnectionState = CS_CLIENT_STATE.PENDING;
+            this.SessionStartTime = DateTime.UtcNow;
             CycleSalt();
 
 
@@ -112,8 +118,7 @@ namespace TorchPlugin.Tracker
                 return;
             }
 
-
-            Common.Logger.Debug($"Hasher generated for client with id {steamId}. Doing quick test. ");
+            Common.Logger.Debug($"Hasher generated for client with id {steamId}. Doing a quick test. ");
 
             try
             {
@@ -150,6 +155,9 @@ namespace TorchPlugin.Tracker
             RebuildHasher();
         }
 
+
+
+        #region EventHubEvents
         private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
             ulong senderId = e.Source;
@@ -161,14 +169,20 @@ namespace TorchPlugin.Tracker
             catch (Exception ex)
             {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling client chatter." + ex.Message);
+                RejectConnection();
                 return;
             }
+
             CleanSpaceChatterPacket r = (CleanSpaceChatterPacket)args[0];
             ReceiveChatter(r);
         }
 
         private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
+            ulong senderId = e.Source;
+            if (senderId != this.steamId)
+                return;
+
             object[] args = e.Args;
             try { MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, srcVerify: this.steamId); }
             catch (Exception ex)
@@ -184,15 +198,24 @@ namespace TorchPlugin.Tracker
 
         private void EventHub_ClientCleanSpaceResponded(object sender, CleanSpaceTargetedEventArgs e)
         {
+            ulong senderId = e.Target;
+            if (senderId != this.steamId)
+                return;
+
             object[] args = e.Args;
             try { MiscUtil.ArgsChecks<PluginValidationResponse>(e, 1, destVerify: this.steamId); }
             catch (Exception ex)
             {
-                Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling client chatter." + ex.Message);
+                Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling validation response." + ex.Message);
                 RejectConnection();
                 return;
             }
-
+            if(this.ConnectionState != CS_CLIENT_STATE.VALIDATION_REQUESTED)
+            {
+                Common.Logger.Error($"{Common.PluginName} Received a validation response but state wasn't requested.");
+                RejectConnection();
+                return;
+            }
             PluginValidationResponse r = (PluginValidationResponse)e.Args[0];
 
             this.ConnectionState = CS_CLIENT_STATE.VALIDATION_RESPONDED;
@@ -214,8 +237,10 @@ namespace TorchPlugin.Tracker
 
             this.validationResultData = ValidationManager.Validate(steamId, r.NonceS, securedCleanSpaceSignature, signatureTransformer, analysis);
             this.ConnectionState = CS_CLIENT_STATE.VALIDATION_FINALIZED;
+            SessionEndTime = DateTime.Now;
+            EventHub.OnServerCleanSpaceFinalized(this, steamId, this, validationResultData);
 
-            if(!r.newSteamToken.IsNullOrEmpty())
+            if (!r.newSteamToken.IsNullOrEmpty())
             {
                 this.initialMsg.Token = r.newSteamToken;
             }
@@ -231,21 +256,8 @@ namespace TorchPlugin.Tracker
 
         }
 
-        /*
-         * byte[] array = new byte[1024];
-	if (!MyGameService.GetAuthSessionTicket(out var _, array, out var length))
-	{
-		MySessionLoader.UnloadAndExitToMenu();
-		MyGuiSandbox.AddScreen(MyGuiSandbox.CreateMessageBox(MyMessageBoxStyleEnum.Error, MyMessageBoxButtonsType.OK, messageCaption: MyTexts.Get(MyCommonTexts.MessageBoxCaptionError), messageText: MyTexts.Get(MyCommonTexts.MultiplayerErrorConnectionFailed)));
-	}
-	else
-	{
-		msg.Token = new byte[length];
-		Array.Copy(array, msg.Token, length);
-		base.ReplicationLayer.SendClientConnected(ref msg);
-	}
-         * 
-         */
+
+        #endregion
         private void AcceptConnection(bool force = false)
         {
             if (connectionState != CS_CLIENT_STATE.CONNECTED)
@@ -267,7 +279,7 @@ namespace TorchPlugin.Tracker
         {
             StringBuilder mmb = new StringBuilder();
 
-            if (_hasSentHello <= _helloTriesMax && !_hasReceivedHello) {
+            if (_hasSentHello < _helloTriesMax && !_hasReceivedHello) {
                 var newNonce = GenerateNewNonce();
                 var sayHello = new CleanSpaceHelloPacket
                 {
@@ -305,6 +317,7 @@ namespace TorchPlugin.Tracker
                 AcceptConnection();
                 return;
             }      
+
             if (this.sessionParameters.sessionSalt == null)
             {
                 Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but we had no recorded session parameters. Discarding the whole thing.");
@@ -315,23 +328,22 @@ namespace TorchPlugin.Tracker
 
             if (this.ConnectionState != CS_CLIENT_STATE.PENDING)
             {
-                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent us a hello, but their state implies they already have a request out. Rejecting the connection for security reasons.");
+                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent us a hello, but their state wasn't pending.");
                 RejectConnection();
                 return;
             }
-            _hasReceivedHello = true;
-            this.ConnectionState = CS_CLIENT_STATE.VALIDATION_REQUESTED;
+
+            _hasReceivedHello = true;     
 
             var challengeResponses = SessionParameterValidator.UnpackChallengeResponse(r.sessionParameters);            
 
             if (SessionParameterValidator.ValidateResponse(this.sessionParameters, r.sessionParameters, currentServerNonce, clientSalt) <= 0)
             {
-                Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but failed validation.");
-         
-
+                Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but failed validation.");       
                 RejectConnection();
                 return;
             }
+
             this.lastClientNonce = String.Empty;
             this.currentClientNonce = r.NonceC;
             Common.Logger.Info($"{Common.PluginName}: Client ID {steamId} said hello and passed initial validation checks.");
@@ -340,13 +352,7 @@ namespace TorchPlugin.Tracker
 
         private void BeginChatter()
         {
-            if (this.ConnectionState != CS_CLIENT_STATE.VALIDATION_REQUESTED)
-            {
-                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent chatter, but their state implies aren't ready for it. Rejecting the connection for security reasons.");
-                RejectConnection();
-                return;
-            }
-           
+            this.ConnectionState = CS_CLIENT_STATE.CHATTING;
             chatterRemaining = this.sessionParameters.chatterLength;
             Common.Logger.Debug($"{Common.PluginName}: Set chatter length to {chatterRemaining}. Initiating chatter.");
             SendChatter();
@@ -380,7 +386,7 @@ namespace TorchPlugin.Tracker
                 };
 
                 byte[] chatterPayload = ProtoUtil.Serialize(rs);
-
+                this.ConnectionState = CS_CLIENT_STATE.VALIDATION_REQUESTED;
                 // This time, the nonce on the chatter packet is insignificant, instead of the nonce on the dummy payload.
                 string insignificantNonce = TokenUtility.GenerateToken(Common.InstanceSecret, DateTime.UtcNow.AddSeconds(10)); ;
                 CleanSpaceChatterPacket cleanSpaceChatterPacket = new CleanSpaceChatterPacket()
@@ -395,13 +401,10 @@ namespace TorchPlugin.Tracker
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
                 Common.Logger.Info($"Chatter with real payload sent to client ID {steamId}. Scheduling echoes...");
-
-                // When chatter begins, the lastClientNonce will be null. This is fine, because a per-message salt is used as the extra key if the supplied extra key is null.
-                PacketRegistry.Send(cleanSpaceChatterPacket, new EndpointId(steamId), newNonce, currentClientNonce);
-                this.ConnectionState = CS_CLIENT_STATE.VALIDATION_REQUESTED;
-                EventHub.OnServerCleanSpaceRequested(this, steamId, initialMsg);
-                noiseRemaining = 3;
                 payload_dispatched = true;
+                PacketRegistry.Send(cleanSpaceChatterPacket, new EndpointId(steamId), newNonce, currentClientNonce);               
+                EventHub.OnServerCleanSpaceRequested(this, steamId, initialMsg);
+                noiseRemaining = 3;                
                 Task.Run(() => SendNoise());
             }
             else
@@ -463,6 +466,13 @@ namespace TorchPlugin.Tracker
                 RejectConnection();
             }
 
+            if (this.ConnectionState != CS_CLIENT_STATE.CHATTING)
+            {
+                Common.Logger.Error($"{Common.PluginName} Client ID {steamId} sent us chatter, but their state was not chattering.");
+                RejectConnection();
+                return;
+            }
+
             this.lastClientNonce = this.currentClientNonce;
             this.currentClientNonce = r.NonceC;
 
@@ -499,7 +509,7 @@ namespace TorchPlugin.Tracker
 
             if (this.validationResultData == null){
                 this.validationResultData = new ValidationResultData { Code = ValidationResultCode.FAILED_COMMUNICATION, PluginList = null, Success = false };
-            }
+            }            
         
             string newNonce = GenerateNewNonce();
             PluginValidationResult rs = new PluginValidationResult()
@@ -528,7 +538,6 @@ namespace TorchPlugin.Tracker
         }
         private void ResetState()
         {
-            CycleSalt();
             this.payload_dispatched = false;
             this.accepting_chatter = true;
             this._hasReceivedHello = false;
@@ -551,7 +560,7 @@ namespace TorchPlugin.Tracker
         public async Task DelayedDisconnect()
         {
             await Task.Delay(1000);
-            this.sessionEndTime = DateTimeOffset.UtcNow.DateTime;
+            this.SessionEndTime = DateTimeOffset.UtcNow.DateTime;
             Common.Logger.Info($"Ticket cancelled for ID {steamId}.");
             ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, steamId, JoinResult.TicketCanceled);
             ClientSessionManager.Instance?.RequestDispose(steamId);
@@ -562,7 +571,7 @@ namespace TorchPlugin.Tracker
             await Task.Delay(10000);
             if (((int)ConnectionState) < ((int)CS_CLIENT_STATE.VALIDATION_RESPONDED))
             {
-                this.sessionEndTime = DateTimeOffset.UtcNow.DateTime;
+                this.SessionEndTime = DateTimeOffset.UtcNow.DateTime;
                 Common.Logger.Info($"No response from ID {steamId} (held connection still present). Attempting to direct to information group.");
                 ConnectedClientSendJoinPatch.CallPrivateMethod((MyDedicatedServerBase)MyDedicatedServerBase.Instance, steamId, JoinResult.NotInGroup);
                 ClientSessionManager.Instance?.RequestDispose(steamId);
@@ -606,8 +615,20 @@ namespace TorchPlugin.Tracker
             if (events_initialized) return;
             events_initialized = true;
             EventHub.ClientConnected += EventHub_ClientConnected;
+            EventHub.ServerCleanSpaceFinalized += EventHub_ServerCleanSpaceFinalized;
         }
-        public bool RequestDispose(ulong steamId)
+
+        private void EventHub_ServerCleanSpaceFinalized(object sender, CleanSpaceTargetedEventArgs e)
+        {
+            ClientSession src = (ClientSession)sender;
+            ValidationResultData d = (ValidationResultData)e.Args[1];
+            string successString = (d.Success ? "SUCCESS" : "FAILURE");
+            string pluginListString = (d.PluginList.Count() > 0 ? $" Hashes: {d.PluginList.Aggregate((a, b) => a + "," + b)}" : "No Conflicts");
+            Common.Logger.Info($"{Common.PluginName}: Validation for {e.Target} resulted in {successString} with {d.Code.ToString()} {pluginListString}.");
+            Common.Logger.Info($"{Common.PluginName}: Started at {src.SessionStartTime.ToShortTimeString()}, ended at {src.SessionEndTime.ToShortTimeString()}.");
+        }
+
+        internal bool RequestDispose(ulong steamId)
         {
             ClientSession attempt = GetClient(steamId);
             if (attempt != null)

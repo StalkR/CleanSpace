@@ -15,12 +15,10 @@ using Shared.Struct;
 using Shared.Util;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using VRage.FileSystem;
 using VRage.Game;
 using VRage.GameServices;
 using VRage.Network;
@@ -43,9 +41,7 @@ namespace CleanSpaceShared
 
         public IPluginConfig Config => config?.Data;
         private PersistentConfig<PluginConfig> config;
-        private static readonly string ConfigFileName = $"{PluginName}.cfg";
-
-
+        
         private uint serverFacingAddress; 
         public bool first_initialization = false;
         private byte[] connectionSessionSalt;
@@ -115,18 +111,18 @@ namespace CleanSpaceShared
             Thread.Sleep(100);
 #endif
 
-            MyGuiScreenMainMenuBase.OnOpened = menuOpenEvent;
+       
             Instance = this;
 
             Log.Info("Loading");
 
-            var configPath = Path.Combine(MyFileSystem.UserDataPath, ConfigFileName);
-            config = PersistentConfig<PluginConfig>.Load(Log, configPath);
-
             var gameVersion = MyFinalBuildConstants.APP_VERSION_STRING.ToString();
-            Common.SetPlugin(this, gameVersion, MyFileSystem.UserDataPath, "Clean Space", false, Logger);
-
-            Config.TokenValidTimeSeconds = TimeSpan.TicksPerSecond * 2;
+            config = new PersistentConfig<PluginConfig>(new PluginConfig()
+            {
+                TokenValidTimeSeconds = 2,
+            });
+            Common.SetPlugin(this, gameVersion, null, "Clean Space", false, Logger, config.Data);         
+           
             Log.Debug($"{PluginName} Loaded");
             init_events();
             ClientSessionParameterProviders.RegisterProviders();
@@ -436,19 +432,8 @@ namespace CleanSpaceShared
         }
 
 
-        private void menuOpenEvent()
-        {                       
-          
-            MyGuiScreenMainMenuBase.OnOpened = null;
-
-        }
 
 
-        private void LogMessage(MessageBase obj)
-        {
-            byte[] array = new byte[1024];
-           
-        }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void RegisterPackets()

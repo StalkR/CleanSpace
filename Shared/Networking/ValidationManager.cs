@@ -97,13 +97,6 @@ namespace CleanSpace
             return false;
         }
 
-        public static void LogValidationResult(ulong steamId, ValidationResultData data)
-        {
-            string successString = (data.Success ? "SUCCESS" : "FAILURE");
-            string pluginListString = (data.PluginList.Count() > 0 ? $" Hashes: {data.PluginList.ToString()}" : "No Conflicts");
-            Log.Info($"{Shared.Plugin.Common.PluginName}: Validation for {steamId} result {successString} with {data.Code.ToString()} {pluginListString}");
-        }
-
         public static void PruneStaleEntries()
         {
             var gen = expectedNonces.GetEnumerator();
@@ -179,7 +172,6 @@ namespace CleanSpace
                 result = new ValidationResultData() { Code = ValidationResultCode.ALLOWED, PluginList = conflictingHashes, Success = true };
             }
 
-            LogValidationResult(steamId, result);
             return result;
         }            
     }
