@@ -3,7 +3,7 @@ using ProtoBuf;
 namespace CleanSpaceShared.Struct
 {
     [ProtoContract]
-    public struct SessionParameterRequest
+    public struct ChatterChallengeRequest
     {
         [ProtoMember(1)]
         public byte request { get; set; }

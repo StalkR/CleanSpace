@@ -519,7 +519,7 @@
     <Compile Include="Tracker\ClientSession.cs" />
     <Compile Include="Util\ILReader.cs" />
     <Compile Include="Util\ServerSessionParameterProviders.cs" />
-    <Compile Include="Util\SessionParameterValidator.cs" />
+    <Compile Include="Util\ChatterChallengeValidater.cs" />
     <Compile Include="ViewModelConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Commands.cs" />

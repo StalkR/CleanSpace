@@ -5,10 +5,10 @@ using System.IO;
 namespace CleanSpaceShared.Struct
 {
     [ProtoContract]
-    public struct SessionParameters
+    public struct ChatterChallenge
     {
         [ProtoMember(1)]
-        public SessionParameterRequest[] requests { get; set; }
+        public ChatterChallengeRequest[] requests { get; set; }
 
         [ProtoMember(2)]
         public byte chatterLength { get; set; }
@@ -20,12 +20,12 @@ namespace CleanSpaceShared.Struct
         {
             return ProtoUtil.Serialize(requests);
         }
-        public static SessionParameters FromBytes(byte[] data)
+        public static ChatterChallenge FromBytes(byte[] data)
         {
-           return ProtoUtil.Deserialize<SessionParameters>(data);
+           return ProtoUtil.Deserialize<ChatterChallenge>(data);
         }
 
-        public static implicit operator byte[](SessionParameters p) => p.ToBytes();
-        public static implicit operator SessionParameters(byte[] data) => FromBytes(data);
+        public static implicit operator byte[](ChatterChallenge p) => p.ToBytes();
+        public static implicit operator ChatterChallenge(byte[] data) => FromBytes(data);
     }
 }

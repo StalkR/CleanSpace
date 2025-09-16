@@ -35,7 +35,6 @@ public static class ILAttester
         if (body == null) return Array.Empty<byte>();
         byte[] ilBytes = body.GetILAsByteArray();
         if (ilBytes == null) return Array.Empty<byte>();
-
         return ilBytes;
     }
 
@@ -170,7 +169,7 @@ public enum RequestType : byte
   //  JitAttestation = 100   :( experiment unsuccessful
 }
 
-public static class SessionParameterFactory
+public static class ChatterChallengeFactory
 {
     private static readonly Random _rng = new Random();
 
@@ -201,10 +200,10 @@ public static class SessionParameterFactory
         return methods[_rng.Next(methods.Length)];
     }
 
-    public static SessionParameters CreateSessionParameters(byte[] salt)
+    public static ChatterChallenge CreateSessionParameters(byte[] salt)
     {
         var numRequests = _rng.Next(2, 5);
-        List<SessionParameterRequest> requests = new List<SessionParameterRequest>();
+        List<ChatterChallengeRequest> requests = new List<ChatterChallengeRequest>();
 
         Common.Logger.Debug($"{Common.PluginName} Starting with {numRequests} request slots, salt length={salt?.Length ?? 0}");
 
@@ -248,7 +247,7 @@ public static class SessionParameterFactory
 
                     Common.Logger.Debug($"{Common.PluginName}: Serialized MethodIdentifier (Base64): {Convert.ToBase64String(serializedMethodBase)}");
 
-                    requests.Add(new SessionParameterRequest
+                    requests.Add(new ChatterChallengeRequest
                     {
                         request = newRequesType,
                         context = serializedMethodBase
@@ -260,7 +259,7 @@ public static class SessionParameterFactory
         string challenges = string.Join(", ", requests.Select(e => Enum.GetName(typeof(RequestType), e.request)));
         Common.Logger.Debug($"{Common.PluginName}: Final challenge sequence: {challenges}");
 
-        var ret = new SessionParameters
+        var ret = new ChatterChallenge
         {
             requests = requests.ToArray(),
             chatterLength = (byte)_rng.Next(1, 6),
@@ -271,7 +270,7 @@ public static class SessionParameterFactory
         return ret;
     }
 
-    public static byte[] AnswerChallenge(SessionParameters challenge, params object[] args)
+    public static byte[] AnswerChallenge(ChatterChallenge challenge, params object[] args)
     {
 
         using (var ms = new MemoryStream())

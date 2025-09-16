@@ -9,7 +9,7 @@ namespace CleanSpaceTorch.Util
         public static void RegisterProviders()
         {          
 
-            SessionParameterFactory.RegisterProvider(RequestType.MethodIL, (args) =>
+            ChatterChallengeFactory.RegisterProvider(RequestType.MethodIL, (args) =>
             {
                 MethodIdentifier m = ProtoUtil.Deserialize<MethodIdentifier>((byte[])args[0]);
                 // Find the assembly that contains the type

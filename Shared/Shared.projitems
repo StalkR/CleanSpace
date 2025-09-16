@@ -23,14 +23,14 @@
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\Envelope.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\ProtoPacketData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\CleanSpaceHelloPacket.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)networking\SessionParameterFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)networking\ChatterChallengeFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\ValidationManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scanner\AssemblyScanner.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\ListMatchAction.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Struct\PluginListEntry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\PluginListType.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)struct\SessionParameterRequest.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)struct\SessionParameters.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)struct\ChatterChallengeRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)struct\ChatterChallenge.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)struct\ValidationResultCode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Util\CompressionUtil.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\Packet\MessageBase.cs" />
@@ -59,6 +59,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Networking\Challenge\" />
     <Folder Include="$(MSBuildThisFileDirectory)Networking\Packet\" />
     <Folder Include="$(MSBuildThisFileDirectory)Events\" />
     <Folder Include="$(MSBuildThisFileDirectory)Hasher\" />

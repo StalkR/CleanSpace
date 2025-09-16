@@ -64,8 +64,8 @@ namespace CleanSpaceTorch.Tracker
             }
         }
 
-        SessionParameters chatterParameters;
-        SessionParameters sessionParameters;
+        ChatterChallenge chatterParameters;
+        ChatterChallenge sessionParameters;
         private byte[] clientSalt;
         string currentClientNonce;
         string currentServerNonce;
@@ -289,7 +289,7 @@ namespace CleanSpaceTorch.Tracker
                     UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                     NonceS = newNonce,
                     NonceC = String.Empty,
-                    sessionParameters = ProtoUtil.Serialize(this.sessionParameters = SessionParameterFactory.CreateSessionParameters(this.clientSalt)),
+                    sessionParameters = ProtoUtil.Serialize(this.sessionParameters = ChatterChallengeFactory.CreateSessionParameters(this.clientSalt)),
                     client_ip_echo =  this.origin
                 }; 
 
@@ -335,9 +335,9 @@ namespace CleanSpaceTorch.Tracker
 
             _hasReceivedHello = true;     
 
-            var challengeResponses = SessionParameterValidator.UnpackChallengeResponse(r.sessionParameters);            
+            var challengeResponses = ChatterChallengeValidater.UnpackChallengeResponse(r.sessionParameters);            
 
-            if (SessionParameterValidator.ValidateResponse(this.sessionParameters, r.sessionParameters, currentServerNonce, clientSalt) <= 0)
+            if (ChatterChallengeValidater.ValidateResponse(this.sessionParameters, r.sessionParameters, currentServerNonce, clientSalt) <= 0)
             {
                 Common.Logger.Error($"{Common.PluginName}: Client ID {steamId} sent us a hello packet but failed validation.");       
                 RejectConnection();
@@ -437,7 +437,7 @@ namespace CleanSpaceTorch.Tracker
 
             byte[] chatterPayload = ProtoUtil.Serialize(rs);
 
-            this.chatterParameters = SessionParameterFactory.CreateSessionParameters(this.clientSalt);
+            this.chatterParameters = ChatterChallengeFactory.CreateSessionParameters(this.clientSalt);
             string newServerNonce = meaningfulNonce ? GenerateNewNonce() : TokenUtility.GenerateToken(Common.InstanceSecret, DateTime.UtcNow.AddSeconds(10));
 
             CleanSpaceChatterPacket cleanSpaceChatterPacket = new CleanSpaceChatterPacket()
@@ -459,7 +459,7 @@ namespace CleanSpaceTorch.Tracker
         {
             if (!accepting_chatter) return;
            
-            if(SessionParameterValidator.ValidateResponse(this.chatterParameters, r.chatterParameters) <= 0)
+            if(ChatterChallengeValidater.ValidateResponse(this.chatterParameters, r.chatterParameters) <= 0)
             {
                 Common.Logger.Info($"Client ID {steamId} failed a chatter validation. Rejecting connection.");
                 accepting_chatter = false;

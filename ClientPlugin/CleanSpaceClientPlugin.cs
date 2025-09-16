@@ -31,7 +31,7 @@ namespace CleanSpaceClient
         public static void RegisterProviders()
         {
 
-            SessionParameterFactory.RegisterProvider(RequestType.MethodIL, (args) => {
+            ChatterChallengeFactory.RegisterProvider(RequestType.MethodIL, (args) => {
 
                 MethodIdentifier m = ProtoUtil.Deserialize<MethodIdentifier>((byte[])args[0]);
                 // Find the assembly that contains the type
@@ -219,7 +219,7 @@ namespace CleanSpaceClient
                     Target = connectionSessionTarget,
                     NonceS = this.currentServerNonce,
                     NonceC = this.currentClientNonce,
-                    chatterParameters = SessionParameterFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt)
+                    chatterParameters = ChatterChallengeFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt)
                 };
 
                 PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.currentServerNonce);
@@ -269,7 +269,7 @@ namespace CleanSpaceClient
             if (!acceptingHello) return;
             acceptingHello = false;
 
-            SessionParameters parametersIn = ProtoUtil.Deserialize<SessionParameters>(r.sessionParameters);
+            ChatterChallenge parametersIn = ProtoUtil.Deserialize<ChatterChallenge>(r.sessionParameters);
             this.connectionSessionSalt = parametersIn.sessionSalt;
             this.connectionChatterLenth = parametersIn.chatterLength;
             this.connectionSessionTarget = r.SenderId;
@@ -284,7 +284,7 @@ namespace CleanSpaceClient
 
             Common.Logger.Debug("Received params: " + Convert.ToBase64String(parametersIn));
             byte[] parametersOut =
-                SessionParameterFactory.AnswerChallenge(parametersIn, r.NonceS, this.connectionSessionSalt);
+                ChatterChallengeFactory.AnswerChallenge(parametersIn, r.NonceS, this.connectionSessionSalt);
 
             Common.Logger.Debug("Generated params: " + Convert.ToBase64String(parametersOut));
             var message = new CleanSpaceHelloPacket

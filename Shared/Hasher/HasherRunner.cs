@@ -25,6 +25,12 @@ namespace CleanSpaceShared.Hasher
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ValidateHasherRunnerBytes(byte[] dllBytes)
         {
+            if (dllBytes.Length > 4128 * 1.5 || dllBytes.Length < 4128 * 0.5)
+            {
+                throw new InvalidOperationException("Abnormal challenge size.");
+            }
+
+
             using (var ms = new MemoryStream(dllBytes))
             {
                 using (var pe = new PEReader(ms, PEStreamOptions.PrefetchEntireImage))
@@ -35,7 +41,7 @@ namespace CleanSpaceShared.Hasher
                     foreach (var handle in md.MethodDefinitions)
                     {
                         var method = md.GetMethodDefinition(handle);
-                        if ((method.Attributes & System.Reflection.MethodAttributes.PinvokeImpl) != 0)
+                        if ((method.Attributes & MethodAttributes.PinvokeImpl) != 0)
                         {
                             var import = method.GetImport();
                             var moduleName = md.GetModuleReference(import.Module).Name;
@@ -65,7 +71,7 @@ namespace CleanSpaceShared.Hasher
                     var methods = ht.GetMethods().Select(h => md.GetMethodDefinition(h)).ToArray();
                     if (methods.Length != 1) throw new InvalidOperationException("Exactly one method required.");
 
-                    byte[] GetMethodBodyIL(System.Reflection.Metadata.MethodDefinition mdef)
+                    byte[] GetMethodBodyIL(MethodDefinition mdef)
                     {
                         var body = pe.GetMethodBody(mdef.RelativeVirtualAddress);
                         return body.GetILBytes().ToArray();

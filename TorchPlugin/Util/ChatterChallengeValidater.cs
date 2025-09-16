@@ -4,11 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
-using static SessionParameterFactory;
-using static SteamKit2.Internal.CMsgClientPersonaState.Friend;
+using static ChatterChallengeFactory;
 
 namespace CleanSpaceTorch.Util
 {
@@ -32,9 +29,8 @@ namespace CleanSpaceTorch.Util
         }
     }
 
-    public class SessionParameterValidator
+    public class ChatterChallengeValidater
     {        
-
         public static double ByteListComparison(byte[] list1, byte[] list2)
         {
             if (list1.IsNullOrEmpty() && list2.IsNullOrEmpty())
@@ -54,14 +50,14 @@ namespace CleanSpaceTorch.Util
             }
             return (double)matchingBytes / commonLength * 100.0;
         }
-        public static Dictionary<RequestType, ChunkValidationProvider> Providers => SessionParameterFactory.providers;
+        public static Dictionary<RequestType, ChunkValidationProvider> Providers => ChatterChallengeFactory.providers;
 
-        public static int ValidateResponse(SessionParameters challenge, byte[] response, params object[] args)
+        public static int ValidateResponse(ChatterChallenge challenge, byte[] response, params object[] args)
         {
             for (int i = 0; i < args.Length; i++)
                 Common.Logger.Debug($"Args[{i}] = {args[i]?.GetType().FullName ?? "null"}");
 
-            var MyResponse = SessionParameterFactory.AnswerChallenge(challenge, args);
+            var MyResponse = ChatterChallengeFactory.AnswerChallenge(challenge, args);
             Common.Logger.Debug($"Local AnswerChallenge produced {MyResponse?.Length ?? 0} bytes");
             Common.Logger.Debug($"Remote response length {response?.Length ?? 0} bytes");
 
