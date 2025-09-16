@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using HarmonyLib;
 
-namespace Shared.Tools
+namespace CleanSpaceShared.Tools
 {
     // Useful methods in transpiler patches.
     // For usage examples please search this repo:

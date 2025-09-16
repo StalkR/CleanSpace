@@ -1,6 +1,6 @@
 ﻿using ProtoBuf;
-using Shared.Events;
-using Shared.Util;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Util;
 
 namespace CleanSpaceShared.Networking
 {
@@ -19,7 +19,7 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessServer<PluginValidationRequest>(PluginValidationRequest r)
         {
-            Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
+            CleanSpaceShared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
             throw new System.SystemException($"{PacketRegistry.PluginName} encountered a critical issue it could not recover from. Please contact a developer with logs.");
         }
     }

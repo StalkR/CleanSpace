@@ -1,15 +1,13 @@
 using System;
 using System.IO;
-using Shared.Config;
-using Shared.Logging;
-using Shared.Patches;
-using Shared.Util;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Util;
 #if TORCH
 
 #else
-using CleanSpaceShared;
 #endif
-namespace Shared.Plugin
+namespace CleanSpaceShared.Plugin
 {
     public static class Common
     {
@@ -45,7 +43,6 @@ namespace Shared.Plugin
             GameVersion = gameVersion;
             if(DataDir != null)
                 DataDir = Path.Combine(storageDir, "CleanSpace");
-            PatchHelpers.Configure();
         }
     }
 }

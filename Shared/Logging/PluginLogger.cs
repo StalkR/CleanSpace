@@ -3,7 +3,7 @@ using System;
 using System.Runtime.CompilerServices;
 using VRage.Utils;
 
-namespace Shared.Logging
+namespace CleanSpaceShared.Logging
 {
     public class PluginLogger : LogFormatter, IPluginLogger
     {

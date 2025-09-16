@@ -1,6 +1,6 @@
 ﻿using ProtoBuf;
-using Shared.Events;
-using Shared.Struct;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Struct;
 namespace CleanSpaceShared.Networking
 {
     [ProtoContract]
@@ -13,13 +13,13 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessClient<CleanSpaceHelloPacket>(CleanSpaceHelloPacket r)
         {
-            Shared.Util.MiscUtil.BasicReceivingPacketChecks(r);
+            CleanSpaceShared.Util.MiscUtil.BasicReceivingPacketChecks(r);
             EventHub.OnCleanSpaceHelloReceived(this, r.SenderId, r.Target, r);
         }
 
         public override void ProcessServer<CleanSpaceHelloPacket>(CleanSpaceHelloPacket r)
         {
-            Shared.Util.MiscUtil.BasicReceivingPacketChecks(r);
+            CleanSpaceShared.Util.MiscUtil.BasicReceivingPacketChecks(r);
             EventHub.OnCleanSpaceHelloReceived(this, r.SenderId, r.Target, r);
         }
     }

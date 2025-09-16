@@ -3,10 +3,10 @@
 using CleanSpaceShared.Networking;
 using HarmonyLib;
 using Sandbox.Game;
-using Shared.Config;
-using Shared.Logging;
-using Shared.Patches;
-using Shared.Plugin;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Logging;
+using CleanSpaceTorch.Patch;
+using CleanSpaceShared.Plugin;
 using System;
 using System.IO;
 using System.Text;
@@ -37,11 +37,9 @@ namespace CleanSpace
         public IPluginLogger Log => Logger;
         private static readonly IPluginLogger Logger = new PluginLogger(PluginName);
         
-
         public IPluginConfig Config => config?.Data;
         private PersistentConfig<ViewModelConfig> config;
         private static readonly string ConfigFileName = $"{PluginName}.cfg";
-        private static readonly string InstanceSecret = Shared.Plugin.Common.InstanceSecret;
 
         // ReSharper disable once UnusedMember.Global
         public UserControl GetControl() => control ?? (control = new ConfigView());
@@ -79,6 +77,7 @@ namespace CleanSpace
             var gameVersion = new StringBuilder(MyBuildNumbers.ConvertBuildNumberFromIntToString(gameVersionNumber)).ToString();
             Common.SetPlugin(this, gameVersion, StoragePath, "Clean Space", true, Logger);
 
+            PatchHelpers.Configure();
             var harm = new Harmony(Name);
             if (!PatchHelpers.HarmonyPatchAll(Log, harm))
             {

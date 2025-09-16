@@ -7,7 +7,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 
-namespace Shared.Hasher
+namespace CleanSpaceShared.Hasher
 {
     public class HasherRunner
     {

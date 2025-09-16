@@ -2,7 +2,7 @@
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game;
-using Shared.Plugin;
+using CleanSpaceShared.Plugin;
 using System;
 using System.Linq;
 using System.Reflection;

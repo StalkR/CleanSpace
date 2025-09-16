@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Shared.Struct
+namespace CleanSpaceShared.Struct
 {
     public enum PluginListType
     {

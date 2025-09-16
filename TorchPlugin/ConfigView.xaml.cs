@@ -1,7 +1,7 @@
-using Shared.Events;
-using Shared.Logging;
-using Shared.Plugin;
-using Shared.Struct;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Struct;
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Shared.Util
+namespace CleanSpaceShared.Util
 {
     internal static class TokenUtility
     {

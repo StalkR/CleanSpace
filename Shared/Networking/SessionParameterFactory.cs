@@ -1,7 +1,7 @@
 ﻿
 using ProtoBuf;
-using Shared.Plugin;
-using Shared.Struct;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Struct;
 using System;
 using System.Collections.Generic;
 using System.IO;

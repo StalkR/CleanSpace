@@ -38,7 +38,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResponse.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Networking\PluginValidationResult.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Patches\PatchHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Plugin\Common.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Plugin\ICommonPlugin.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Tools\CodeChange.cs" />
@@ -58,8 +57,6 @@
     <Content Include="$(MSBuildThisFileDirectory)..\ReplaceGuidsAndRename.py">
       <Link>ReplaceGuidsAndRename.py</Link>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)Patches\LoadData.original.il" />
-    <Content Include="$(MSBuildThisFileDirectory)Patches\LoadData.patched.il" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Networking\Packet\" />

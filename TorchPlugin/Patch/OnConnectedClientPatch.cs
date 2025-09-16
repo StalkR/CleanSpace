@@ -1,7 +1,7 @@
 ﻿using HarmonyLib;
 using Sandbox.Engine.Multiplayer;
-using Shared.Events;
-using Shared.Plugin;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Plugin;
 using System;
 using System.Reflection;
 using VRage.Network;

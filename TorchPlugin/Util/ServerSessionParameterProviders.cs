@@ -50,7 +50,7 @@ namespace CleanSpaceTorch.Util
 
          
 
-            Shared.Plugin.Common.Logger.Info($"{Shared.Plugin.Common.Logger}: Validation providers registered.");
+            CleanSpaceShared.Plugin.Common.Logger.Info($"{CleanSpaceShared.Plugin.Common.Logger}: Validation providers registered.");
         }
     }
 }

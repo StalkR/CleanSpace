@@ -1,7 +1,7 @@
-using Shared.Config;
-using Shared.Logging;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Logging;
 
-namespace Shared.Plugin
+namespace CleanSpaceShared.Plugin
 {
     public interface ICommonPlugin
     {

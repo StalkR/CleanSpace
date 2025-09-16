@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
-namespace Shared.Tools
+namespace CleanSpaceShared.Tools
 {
     // Attribute to mark prefix and suffix patch methods
     // For usage examples please search this repo:

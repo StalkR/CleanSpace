@@ -1,9 +1,9 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Shared.Events;
-using Shared.Hasher;
-using Shared.Logging;
-using Shared.Struct;
-using Shared.Util;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Hasher;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Struct;
+using CleanSpaceShared.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -58,7 +58,7 @@ namespace CleanSpace
             return nonce;
         }
 
-        private static string Secret => Shared.Plugin.Common.InstanceSecret;
+        private static string Secret => CleanSpaceShared.Plugin.Common.InstanceSecret;
 
         private static int pruneIntervalCounter = 0;
         private static int pruneInterval = 1000;
@@ -67,7 +67,7 @@ namespace CleanSpace
             pruneIntervalCounter++;
             if (pruneIntervalCounter % pruneInterval == 0)
                 PruneStaleEntries();
-            var token = TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddSeconds(Shared.Plugin.Common.Config.TokenValidTimeSeconds));
+            var token = TokenUtility.GenerateToken(Secret, DateTime.UtcNow.AddSeconds(CleanSpaceShared.Plugin.Common.Config.TokenValidTimeSeconds));
             return RegisterNonceForPlayer(steamId, token, force);
         }
 
@@ -111,13 +111,13 @@ namespace CleanSpace
 
         public static List<string> GetCleanSpaceHashList()
         {
-            return (Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins)
+            return (CleanSpaceShared.Plugin.Common.Plugin.Config.AnalyzedPlugins)
                 .Where( (a)=>a.AssemblyName.Contains("CleanSpace") )
                 .Select<PluginListEntry, string>((b)=>b.Hash).ToList();
         }
         public static List<PluginListEntry> GetCleanSpaceAssemblyList()
         {
-            return (Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins)
+            return (CleanSpaceShared.Plugin.Common.Plugin.Config.AnalyzedPlugins)
                 .Where((a) => a.AssemblyName.Contains("CleanSpace")).ToList();
         }
         public static ValidationResultData Validate(ulong steamId, string receivedNonce, string securedSignature, byte[] signatureTransformer, List<String> hashList)
@@ -139,11 +139,11 @@ namespace CleanSpace
               ).ToList();
 
           
-            var currentPluginList = Shared.Plugin.Common.Plugin.Config.AnalyzedPlugins;
+            var currentPluginList = CleanSpaceShared.Plugin.Common.Plugin.Config.AnalyzedPlugins;
             var selectedPluginHashes = currentPluginList.Where(e => e.IsSelected).Select(e => e.Hash).ToList();
 
 
-            var listType = Shared.Plugin.Common.Plugin.Config.PluginListType;
+            var listType = CleanSpaceShared.Plugin.Common.Plugin.Config.PluginListType;
 
             var conflictingHashes = listType == PluginListType.Blacklist  
                 // If it's a blacklist, then we are interested in which plugins the client has that are PRESENT in the list.
@@ -151,7 +151,7 @@ namespace CleanSpace
                 // If it's a whitelist, then we are interested in the plugins that are NOT PRESENT in the list.
                 : hashList.Except(selectedPluginHashes, StringComparer.OrdinalIgnoreCase).ToList();
 
-            var action = Shared.Plugin.Common.Plugin.Config.ListMatchAction;
+            var action = CleanSpaceShared.Plugin.Common.Plugin.Config.ListMatchAction;
 
             if (!transformedCleanSpaceSignatures.Contains(securedSignature))
             {

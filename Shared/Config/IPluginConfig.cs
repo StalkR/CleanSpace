@@ -1,10 +1,10 @@
-using Shared.Struct;
+using CleanSpaceShared.Struct;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
-namespace Shared.Config
+namespace CleanSpaceShared.Config
 {
     public interface IPluginConfig : INotifyPropertyChanged
     {

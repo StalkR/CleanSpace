@@ -5,13 +5,13 @@ using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens;
 using Sandbox.Graphics.GUI;
-using Shared.Config;
-using Shared.Events;
-using Shared.Hasher;
-using Shared.Logging;
-using Shared.Plugin;
-using Shared.Struct;
-using Shared.Util;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Hasher;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Struct;
+using CleanSpaceShared.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +26,51 @@ using VRageMath;
 
 namespace CleanSpaceClient
 {
+    internal static class ClientSessionParameterProviders
+    {
+        public static void RegisterProviders()
+        {
+
+            SessionParameterFactory.RegisterProvider(RequestType.MethodIL, (args) =>
+            {
+                MethodIdentifier m = ProtoUtil.Deserialize<MethodIdentifier>((byte[])args[0]);
+                // Find the assembly that contains the type
+                Type t = AppDomain.CurrentDomain
+                    .GetAssemblies()
+                    .Select(a => a.GetType(m.FullName, throwOnError: false))
+                    .FirstOrDefault(x => x != null);
+
+                if (t == null)
+                    throw new InvalidOperationException($"Type {m.FullName} not found in loaded assemblies");
+
+                MethodBase method = t.GetMethod(
+                    m.MethodName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+                );
+
+                if (method == null)
+                    throw new InvalidOperationException($"Method {m.MethodName} not found on type {m.FullName}");
+                return ILAttester.GetMethodIlBytes(method);
+            });
+
+            /*     SessionParameterFactory.RegisterProvider(RequestType.TypeIL, (args) =>
+                 {
+                     MethodIdentifier m = ProtoUtil.Deserialize<MethodIdentifier>((byte[])args[0]);
+
+                     Type t = AppDomain.CurrentDomain
+                         .GetAssemblies()
+                         .Select(a => a.GetType(m.FullName, throwOnError: false))
+                         .FirstOrDefault(x => x != null);
+
+                     if (t == null)
+                         throw new InvalidOperationException($"Type {m.FullName} not found in loaded assemblies");
+
+                     return ILAttester.GetTypeIlBytes(t);
+                 });*/
+
+            CleanSpaceShared.Plugin.Common.Logger.Info($"{CleanSpaceShared.Plugin.Common.Logger}: Validation providers registered.");
+        }
+    }
 
     // ReSharper disable once UnusedType.Global
     public class CleanSpaceClientPlugin : IPlugin, ICommonPlugin
@@ -66,6 +111,7 @@ namespace CleanSpaceClient
                 throw new InvalidOperationException($"{Common.PluginName} invalid app domain.");
             }
         }
+
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static bool IsInValidAppDomain()
@@ -205,8 +251,6 @@ namespace CleanSpaceClient
             }
         }
 
-
-
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
@@ -269,17 +313,17 @@ namespace CleanSpaceClient
 
                 var offenderPluginInfo = AssemblyScanner.GetRawPluginAssembliesData().Where((element)=>Offenders.Contains(element.Hash, StringComparer.OrdinalIgnoreCase));
 
-                if(r.Code == Shared.Struct.ValidationResultCode.REJECTED_CLEANSPACE_HASH)
+                if(r.Code == CleanSpaceShared.Struct.ValidationResultCode.REJECTED_CLEANSPACE_HASH)
                 {
                     MsgBody.AppendLine("Your version of Clean Space is not allowed by the server. Update your version of Clean Space or contact the server owner to identify the version being used if not latest.");
                 }
-                else if(r.Code == Shared.Struct.ValidationResultCode.REJECTED_MATCH)
+                else if(r.Code == CleanSpaceShared.Struct.ValidationResultCode.REJECTED_MATCH)
                 {
                     MsgBody.AppendLine("Some of your currently loaded plugins were disallowed by the server. Disable them before attempting to join. \n Plugins: \n");
                     offenderPluginInfo.ForEach((element) => MsgBody.AppendLine($"Plugin Name: {element.Name}"));
                     MsgBody.AppendLine("\n\nIf you feel that this is an error, contact a Clean Space developer with your logs.");
                 }
-                else if (r.Code == Shared.Struct.ValidationResultCode.EXPIRED_TOKEN)
+                else if (r.Code == CleanSpaceShared.Struct.ValidationResultCode.EXPIRED_TOKEN)
                 {
                     MsgBody.AppendLine("Clean Space rejected your connection due to an expired token. Perhaps network issues?");
                 }

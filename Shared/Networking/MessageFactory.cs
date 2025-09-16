@@ -55,7 +55,7 @@ namespace CleanSpaceShared.Networking
             }
             catch (Exception ex)
             {
-                Shared.Plugin.Common.Logger.Error(ex, "UNWRAP: " + ex.Message);
+                CleanSpaceShared.Plugin.Common.Logger.Error(ex, "UNWRAP: " + ex.Message);
             }
            
             if (envelope.IsEncrypted)
@@ -66,7 +66,7 @@ namespace CleanSpaceShared.Networking
                 }
                 catch (Exception ex)
                 {
-                    Shared.Plugin.Common.Logger.Error(ex, "UNWRAP2: " + ex.Message);
+                    CleanSpaceShared.Plugin.Common.Logger.Error(ex, "UNWRAP2: " + ex.Message);
                 }
             }
 

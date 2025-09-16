@@ -2,7 +2,7 @@ using ProtoBuf;
 using System;
 using System.IO;
 
-namespace Shared.Struct
+namespace CleanSpaceShared.Struct
 {
     [ProtoContract]
     public struct SessionParameters

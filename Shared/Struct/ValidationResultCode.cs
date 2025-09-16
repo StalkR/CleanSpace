@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Shared.Struct
+namespace CleanSpaceShared.Struct
 {
 
     public enum ValidationResultCode

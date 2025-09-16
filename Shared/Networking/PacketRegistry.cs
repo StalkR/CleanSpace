@@ -3,9 +3,9 @@ using ProtoBuf;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
-using Shared.Logging;
-using Shared.Plugin;
-using Shared.Util;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -83,7 +83,7 @@ namespace CleanSpaceShared.Networking
 
     public static class PacketRegistry
     {
-        private static bool IsServer => Shared.Plugin.Common.IsServer;
+        private static bool IsServer => CleanSpaceShared.Plugin.Common.IsServer;
         public struct PacketInfo
         {            
             public Func<IProtoPacketData> Factory;

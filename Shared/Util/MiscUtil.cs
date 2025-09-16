@@ -1,13 +1,13 @@
 using CleanSpaceShared.Networking;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
-using Shared.Events;
-using Shared.Logging;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Logging;
 using System;
 using System.Net;
 using VRage.GameServices;
 
-namespace Shared.Util{
+namespace CleanSpaceShared.Util{
 
     public class MiscUtil
     {

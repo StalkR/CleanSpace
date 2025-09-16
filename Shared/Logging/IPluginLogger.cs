@@ -1,6 +1,6 @@
 using System;
 
-namespace Shared.Logging
+namespace CleanSpaceShared.Logging
 {
     public interface IPluginLogger
     {

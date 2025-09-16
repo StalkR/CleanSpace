@@ -6,7 +6,7 @@ public static class EncryptionUtil
 {  
     private static void DebugLog(string message)
     {
-        Shared.Plugin.Common.Logger.Debug($"{Shared.Plugin.Common.PluginName}: {message}");
+        CleanSpaceShared.Plugin.Common.Logger.Debug($"{CleanSpaceShared.Plugin.Common.PluginName}: {message}");
     }
 
     private static string ToHex(byte[] data)

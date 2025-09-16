@@ -1,5 +1,5 @@
 using ProtoBuf;
-using Shared.Events;
+using CleanSpaceShared.Events;
 namespace CleanSpaceShared.Networking
 {
 
@@ -19,14 +19,14 @@ namespace CleanSpaceShared.Networking
     
         public override void ProcessClient<CleanSpaceChatterPacket>(CleanSpaceChatterPacket r)
         {
-            Shared.Util.MiscUtil.BasicReceivingPacketChecks(r);
+            CleanSpaceShared.Util.MiscUtil.BasicReceivingPacketChecks(r);
             EventHub.OnCleanSpaceChatterReceived(this, r.SenderId, r.Target, r);
         }
 
        
         public override void ProcessServer<CleanSpaceChatterPacket>(CleanSpaceChatterPacket r)
         {
-            Shared.Util.MiscUtil.BasicReceivingPacketChecks(r);
+            CleanSpaceShared.Util.MiscUtil.BasicReceivingPacketChecks(r);
             EventHub.OnCleanSpaceChatterReceived(this, r.SenderId, r.Target, r);
         }
     }

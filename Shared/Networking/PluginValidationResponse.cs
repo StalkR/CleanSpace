@@ -1,5 +1,5 @@
 ﻿using ProtoBuf;
-using Shared.Events;
+using CleanSpaceShared.Events;
 using System.Collections.Generic;
 namespace CleanSpaceShared.Networking
 {
@@ -15,7 +15,7 @@ namespace CleanSpaceShared.Networking
 
         public override void ProcessClient<PluginValidationResponse>(PluginValidationResponse r)
         {
-            Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
+            CleanSpaceShared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received something that I should not have.");
             throw new System.SystemException($"{PacketRegistry.PluginName} encountered a critical issue it could not recover from. Please contact a developer with logs.");
         }
 
@@ -23,7 +23,7 @@ namespace CleanSpaceShared.Networking
         {
             string token = r.NonceS;
             if (token == null){
-                Shared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
+                CleanSpaceShared.Plugin.Common.Logger.Error($"{PacketRegistry.PluginName}: Received a validation request from the server, but the server did not provide a token for a response!");
                 return;
             }
 

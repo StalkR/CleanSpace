@@ -5,12 +5,12 @@ using CleanSpaceShared.Scanner;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
-using Shared.Config;
-using Shared.Events;
-using Shared.Logging;
-using Shared.Plugin;
-using Shared.Struct;
-using Shared.Util;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Logging;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Struct;
+using CleanSpaceShared.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -122,7 +122,7 @@ namespace CleanSpaceTorch.Tracker
 
             try
             {
-                Shared.Hasher.HasherRunner.ValidateHasherRunnerBytes(clientHasherBytes);
+                CleanSpaceShared.Hasher.HasherRunner.ValidateHasherRunnerBytes(clientHasherBytes);
             }
             catch (Exception ex)
             {

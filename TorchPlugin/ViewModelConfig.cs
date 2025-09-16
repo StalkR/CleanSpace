@@ -1,5 +1,5 @@
-using Shared.Config;
-using Shared.Struct;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Struct;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

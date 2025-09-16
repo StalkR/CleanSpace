@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using NLog;
-using Shared.Logging;
+using CleanSpaceShared.Logging;
 using VRage.Utils;
 
 namespace CleanSpace

@@ -3,7 +3,7 @@ using System;
 using System.Reflection;
 using VRage.Network;
 
-namespace Shared.Events
+namespace CleanSpaceShared.Events
 {
     public enum CleanSpaceEvent
     {
@@ -71,8 +71,8 @@ namespace Shared.Events
 
         public static event EventHandler<CleanSpaceEventArgs> CleanSpaceServerScannedPlugin;
 
-        public static bool IsServer => Shared.Plugin.Common.IsServer;
-        public static string PluginName => Shared.Plugin.Common.PluginName;
+        public static bool IsServer => CleanSpaceShared.Plugin.Common.IsServer;
+        public static string PluginName => CleanSpaceShared.Plugin.Common.PluginName;
         public static ulong? MyID => MyGameService.OnlineUserId;
 
 

@@ -1,8 +1,8 @@
 ﻿using CleanSpace;
 using CleanSpaceShared.Scanner;
-using Shared.Events;
-using Shared.Plugin;
-using Shared.Struct;
+using CleanSpaceShared.Events;
+using CleanSpaceShared.Plugin;
+using CleanSpaceShared.Struct;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;

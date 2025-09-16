@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace Shared.Struct
+namespace CleanSpaceShared.Struct
 {
     [Serializable]
     public class PluginListEntry : INotifyPropertyChanged

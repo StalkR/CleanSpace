@@ -1,6 +1,6 @@
 using ProtoBuf;
 
-namespace Shared.Struct
+namespace CleanSpaceShared.Struct
 {
     [ProtoContract]
     public struct SessionParameterRequest

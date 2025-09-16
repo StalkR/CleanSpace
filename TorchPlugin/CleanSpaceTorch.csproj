@@ -514,6 +514,7 @@
     <Compile Include="Hasher\template.cs" />
     <Compile Include="Patch\OnConnectedClientPatch.cs" />
     <Compile Include="CleanSpaceTorchPlugin.cs" />
+    <Compile Include="Patch\PatchHelpers.cs" />
     <Compile Include="Patch\SendGameTagsToSteamPatch.cs" />
     <Compile Include="Tracker\ClientSession.cs" />
     <Compile Include="Util\ILReader.cs" />
@@ -541,6 +542,8 @@
     <None Include="App.config" />
     <None Include="build_release_zip.bat" />
     <None Include="packages.config" />
+    <Content Include="Patch\LoadData.original.il" />
+    <Content Include="Patch\LoadData.patched.il" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="ConfigView.xaml" />

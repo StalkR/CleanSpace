@@ -1,7 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Shared.Plugin;
+using CleanSpaceShared.Plugin;
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -1,5 +1,5 @@
-using Shared.Config;
-using Shared.Plugin;
+using CleanSpaceShared.Config;
+using CleanSpaceShared.Plugin;
 using Torch.Commands;
 using Torch.Commands.Permissions;
 using VRage.Game.ModAPI;
