@@ -11,6 +11,47 @@ namespace CleanSpaceShared.Scanner
 {    
     internal sealed class AssemblyScanner
     {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal static bool IsInValidAppDomain()
+        {
+            try
+            {
+                var found = AppDomain.CurrentDomain.GetAssemblies()
+                    .Any(a => a.FullName?.IndexOf("Sandbox.Game", StringComparison.OrdinalIgnoreCase) >= 0
+                           || a.FullName?.IndexOf("Sandbox.Engine", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (found) return true;
+
+                var t = Type.GetType("Sandbox.Game.World.MySession, Sandbox.Game", throwOnError: false);
+                if (t != null) return true;
+
+                var t2 = Type.GetType("CleanSpace.CleanSpaceTorchPlugin, CleanSpace", throwOnError: false);
+                if (t2 != null) return true;
+
+                var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+                if (procName.IndexOf("SpaceEngineers", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+                var thisAsm = Assembly.GetExecutingAssembly();
+                var thisName = thisAsm.GetName().Name;
+                var duplicates = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a =>
+                    {
+                        try { return string.Equals(a.GetName().Name, thisName, StringComparison.OrdinalIgnoreCase); }
+                        catch { return false; }
+                    })
+                    .ToList();
+
+                if (duplicates.Count > 1)
+                {
+                    return false;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static List<Assembly> GetPluginAssemblies()

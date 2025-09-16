@@ -24,7 +24,7 @@ using VRage.GameServices;
 using VRage.Utils;
 using System.Reflection;
 
-namespace CleanSpace
+namespace CleanSpaceTorch
 {
     // ReSharper disable once ClassNeverInstantiated.Global
     public class CleanSpaceTorchPlugin : TorchPluginBase, IWpfPlugin, ICommonPlugin

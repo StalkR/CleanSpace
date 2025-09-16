@@ -4,7 +4,7 @@ using NLog;
 using CleanSpaceShared.Logging;
 using VRage.Utils;
 
-namespace CleanSpace
+namespace CleanSpaceTorch
 {
     public class PluginLogger : LogFormatter, IPluginLogger
     {

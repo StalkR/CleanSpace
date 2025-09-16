@@ -6,7 +6,7 @@ using System;
 using System.Reflection;
 using VRage.Network;
 
-namespace CleanSpace.Patch
+namespace CleanSpaceTorch.Patch
 {
 
     [HarmonyPatch]

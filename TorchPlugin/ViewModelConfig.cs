@@ -8,7 +8,7 @@ using Torch;
 using Torch.Views;
 using VRage.Library.Utils;
 
-namespace CleanSpace
+namespace CleanSpaceTorch
 {
     [Serializable]
     public class ViewModelConfig : ViewModel, IPluginConfig

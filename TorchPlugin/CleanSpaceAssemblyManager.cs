@@ -1,4 +1,4 @@
-﻿using CleanSpace;
+﻿using CleanSpaceTorch;
 using CleanSpaceShared.Scanner;
 using CleanSpaceShared.Events;
 using CleanSpaceShared.Plugin;

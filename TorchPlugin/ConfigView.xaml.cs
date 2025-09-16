@@ -12,7 +12,7 @@ using System.Windows.Controls;
 using VRage.Compression;
 using VRage.Plugins;
 
-namespace CleanSpace
+namespace CleanSpaceTorch
 {
     // ReSharper disable once UnusedType.Global
     // ReSharper disable once RedundantExtendsListEntry

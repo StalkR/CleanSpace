@@ -1,5 +1,5 @@
-﻿using CleanSpace;
-using CleanSpace.Patch;
+﻿using CleanSpaceTorch;
+using CleanSpaceTorch.Patch;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
 using Sandbox.Engine.Multiplayer;

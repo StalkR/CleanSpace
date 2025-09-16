@@ -1,4 +1,4 @@
-﻿using CleanSpace;
+﻿using CleanSpaceTorch;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
 using Sandbox.Engine.Networking;
@@ -103,56 +103,14 @@ namespace CleanSpaceClient
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         static CleanSpaceClientPlugin()
         {
-            if (!IsInValidAppDomain())
+            if (!AssemblyScanner.IsInValidAppDomain())
             {
-                Common.Logger.Error($"{Common.PluginName}: Loaded outside valid app domain. Aborting...");
-                throw new InvalidOperationException($"{Common.PluginName} invalid app domain.");
+                var m = $"{Common.PluginName}: Loaded outside of a valid app domain. Aborting...";
+                Common.Logger.Error(m);
+                throw new InvalidOperationException(m);
             }
         }
-
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static bool IsInValidAppDomain()
-        {
-            try
-            {
-                var found = AppDomain.CurrentDomain.GetAssemblies()
-                    .Any(a => a.FullName?.IndexOf("Sandbox.Game", StringComparison.OrdinalIgnoreCase) >= 0
-                           || a.FullName?.IndexOf("Sandbox.Engine", StringComparison.OrdinalIgnoreCase) >= 0);
-                if (found) return true;
-
-                var t = Type.GetType("Sandbox.Game.World.MySession, Sandbox.Game", throwOnError: false);
-                if (t != null) return true;
-
-                var t2 = Type.GetType("CleanSpace.CleanSpaceTorchPlugin, CleanSpace", throwOnError: false);
-                if (t2 != null) return true;
-
-                var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-                if (procName.IndexOf("SpaceEngineers", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-
-                var thisAsm = typeof(CleanSpaceClientPlugin).Assembly;
-                var thisName = thisAsm.GetName().Name;
-
-                var duplicates = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a =>
-                    {
-                        try { return string.Equals(a.GetName().Name, thisName, StringComparison.OrdinalIgnoreCase); }
-                        catch { return false; }
-                    })
-                    .ToList();
-
-                if (duplicates.Count > 1)
-                {
-                    return false;
-                }
-            }
-            catch
-            {
-            }
-
-            return false;
-        }
+        
         public static bool Ensure() => true;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]

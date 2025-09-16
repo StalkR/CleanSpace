@@ -93,10 +93,10 @@ namespace CleanSpaceShared.Events
         public static void OnServerCleanSpaceFinalized(object sender, ulong steamId, params object[] args)
             => ServerCleanSpaceFinalized?.Invoke(sender, new CleanSpaceTargetedEventArgs(CleanSpaceEvent.SERVER_CS_FINALIZED, IsServer, steamId, MyID ?? 0, args));
 
-        public static void OnNonceRegistered(object sender, ulong steamId, CleanSpace.PendingNonce e)
+        public static void OnNonceRegistered(object sender, ulong steamId, CleanSpaceTorch.PendingNonce e)
           => NonceRegistered?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.REGISTERED_NONCE, IsServer, steamId, e));
 
-        public static void OnNonceRemoved(object sender, ulong steamId, CleanSpace.PendingNonce e)
+        public static void OnNonceRemoved(object sender, ulong steamId, CleanSpaceTorch.PendingNonce e)
         => NonceRegistered?.Invoke(sender, new CleanSpaceEventArgs(CleanSpaceEvent.REMOVED_NONCE, IsServer, steamId, e ));
 
         internal static void OnClientConnected(object sender, ConnectedClientDataMsg msg, ulong steamId)

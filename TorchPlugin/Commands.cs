@@ -4,7 +4,7 @@ using Torch.Commands;
 using Torch.Commands.Permissions;
 using VRage.Game.ModAPI;
 
-namespace CleanSpace
+namespace CleanSpaceTorch
 {
     public class Commands : CommandModule
     {
