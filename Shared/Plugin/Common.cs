@@ -5,6 +5,7 @@ using Shared.Logging;
 using Shared.Patches;
 using Shared.Util;
 #if TORCH
+
 #else
 using CleanSpaceShared;
 #endif
@@ -27,11 +28,7 @@ namespace Shared.Plugin
 
         public static Type[] CriticalTypes = new Type[]{
                         typeof(CleanSpaceShared.Scanner.AssemblyScanner),
-                        typeof(Hasher.HasherRunner),
-#if TORCH
-#else
-                        typeof(CleanSpaceClientPlugin)
-#endif
+                        typeof(Hasher.HasherRunner)
         };
 
         public static string InstanceSecret = _instanceSecret != null ? _instanceSecret :  (_instanceSecret = TokenUtility.GenerateToken(DateTime.UtcNow.ToLongTimeString(), DateTime.UtcNow.AddDays(1), "secret"));

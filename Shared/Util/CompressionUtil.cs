@@ -14,7 +14,6 @@ namespace CleanSpaceShared.Util
             ms.Close();
             return res;
         }
-
         public static byte[] Decompress(byte[] compressedData)
         {
             var input = new MemoryStream(compressedData);

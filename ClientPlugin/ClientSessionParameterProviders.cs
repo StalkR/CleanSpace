@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Reflection;
 
-namespace ClientPlugin
+namespace CleanSpaceClient
 {
     internal static class ClientSessionParameterProviders
     {

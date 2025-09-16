@@ -1,18 +1,12 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 
 public static class EncryptionUtil
-{
-    private static readonly byte[] DSalt = new byte[] { 6, 9, 2, 4, 2, 0, 7, 8, 9, 9, 2, 5, 2, 0, 1, 8};
-  
-    public static string PluginName => Shared.Plugin.Common.PluginName;
-
+{  
     private static void DebugLog(string message)
     {
-        Shared.Plugin.Common.Logger.Debug($"{PluginName}: {message}");
+        Shared.Plugin.Common.Logger.Debug($"{Shared.Plugin.Common.PluginName}: {message}");
     }
 
     private static string ToHex(byte[] data)

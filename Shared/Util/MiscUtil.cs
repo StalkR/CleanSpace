@@ -1,5 +1,3 @@
-
-
 using CleanSpaceShared.Networking;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;

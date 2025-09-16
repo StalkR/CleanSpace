@@ -1,7 +1,6 @@
 ﻿using CleanSpace;
 using CleanSpaceShared.Networking;
 using CleanSpaceShared.Scanner;
-using ClientPlugin;
 using Sandbox.Engine.Networking;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens;
@@ -25,7 +24,7 @@ using VRage.Network;
 using VRage.Plugins;
 using VRageMath;
 
-namespace CleanSpaceShared
+namespace CleanSpaceClient
 {
 
     // ReSharper disable once UnusedType.Global
@@ -52,6 +51,12 @@ namespace CleanSpaceShared
         private string lastClientNonce;
         private string currentClientNonce;
 
+        private bool acceptingChatter = true;
+        private bool acceptingHello = true;
+
+        bool hasPendingMessage = false;
+        MyGuiScreenMessageBox pendingMessageBox;
+
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         static CleanSpaceClientPlugin()
         {
@@ -75,9 +80,13 @@ namespace CleanSpaceShared
                 var t = Type.GetType("Sandbox.Game.World.MySession, Sandbox.Game", throwOnError: false);
                 if (t != null) return true;
 
+                var t2 = Type.GetType("CleanSpace.CleanSpaceTorchPlugin, CleanSpace", throwOnError: false);
+                if (t2 != null) return true;
+
                 var procName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
                 if (procName.IndexOf("SpaceEngineers", StringComparison.OrdinalIgnoreCase) >= 0)
                     return true;
+
                 var thisAsm = typeof(CleanSpaceClientPlugin).Assembly;
                 var thisName = thisAsm.GetName().Name;
 
@@ -107,13 +116,9 @@ namespace CleanSpaceShared
         {
             Ensure();
 #if DEBUG
-            // Allow the debugger some time to connect once the plugin assembly is loaded
             Thread.Sleep(100);
-#endif
-
-       
+#endif       
             Instance = this;
-
             Log.Info("Loading");
 
             var gameVersion = MyFinalBuildConstants.APP_VERSION_STRING.ToString();
@@ -123,33 +128,29 @@ namespace CleanSpaceShared
             });
             Common.SetPlugin(this, gameVersion, null, "Clean Space", false, Logger, config.Data);         
            
-            Log.Debug($"{PluginName} Loaded");
-            init_events();
-            ClientSessionParameterProviders.RegisterProviders();
-        }
-
-        private void init_events()
-        {
             Log.Info($"{PluginName}: Initializing events.");
+
             EventHub.CleanSpaceHelloReceived += EventHub_CleanSpaceHelloReceived;
             EventHub.ServerCleanSpaceRequested += EventHub_ServerCleanSpaceRequested;
             EventHub.ServerCleanSpaceFinalized += EventHub_ServerCleanSpaceFinalized;
             EventHub.CleanSpaceChatterReceived += EventHub_CleanSpaceChatterReceived;
-            MyScreenManager.ScreenAdded += MyScreenManager_ScreenAdded; ;
-        }
+            MyScreenManager.ScreenAdded += MyScreenManager_ScreenAdded;
 
-        private bool acceptingChatter = true;
+            ClientSessionParameterProviders.RegisterProviders();
+            Log.Debug($"{PluginName} Loaded");
+        }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
+
             if (!acceptingChatter) {
                     Common.Logger.Debug("Received chatter, but not accepting it. Probably an echo.");
                 return; 
             }
 
             object[] args = e.Args;
-            try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1); }
+            try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1, destVerify: Sync.MyId); }
             catch (Exception ex) {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling chatter from the server." + ex.Message);
                 return;
@@ -170,7 +171,6 @@ namespace CleanSpaceShared
                     SenderId = Sync.MyId,
                     TargetType = MessageTarget.Server,
                     Target = connectionSessionTarget,
-                    UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                     NonceS = this.currentServerNonce,
                     NonceC = this.currentClientNonce,
                     chatterParameters = SessionParameterFactory.AnswerChallenge(r.chatterParameters, r.NonceS, this.connectionSessionSalt)
@@ -205,23 +205,14 @@ namespace CleanSpaceShared
             }
         }
 
-        private void ResetState()
-        {
-            this.connectionSessionSalt = null;
-            this.connectionChatterLenth = 0;
-            this.connectionSessionTarget = 0;
-            this.lastServerNonce = null;
-            this.acceptingChatter = true;
-            this.acceptingHello = true;
-        }
 
-        private bool acceptingHello = true;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
             object[] args = e.Args;
-            try {   MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, destVerify: Sync.MyId);   }
+            try {   
+                MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, destVerify: Sync.MyId);   }
             catch (Exception ex) {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling a hello message from the server." + ex.Message);
                 return;
@@ -249,12 +240,8 @@ namespace CleanSpaceShared
                 SessionParameterFactory.AnswerChallenge(parametersIn, r.NonceS, this.connectionSessionSalt);
 
             Common.Logger.Debug("Generated params: " + Convert.ToBase64String(parametersOut));
-            var message = new CleanSpaceHelloPacket
-            {
-                SenderId = Sync.MyId,
+            var message = new CleanSpaceHelloPacket {
                 TargetType = MessageTarget.Server,
-                Target = connectionSessionTarget,
-                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 NonceS = this.currentServerNonce,          
                 NonceC = this.currentClientNonce,
                 sessionParameters = parametersOut
@@ -267,8 +254,6 @@ namespace CleanSpaceShared
             Common.Logger.Info($"Replied to a hello from server {connectionSessionTarget}. Let's talk turn-key.");
         }
 
-        bool hasPendingMessage = false;
-        MyGuiScreenMessageBox pendingMessageBox;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void EventHub_ServerCleanSpaceFinalized(object sender, CleanSpaceTargetedEventArgs e)
@@ -314,8 +299,8 @@ namespace CleanSpaceShared
                 hasPendingMessage = true;
             }
         }
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void MyScreenManager_ScreenAdded(MyGuiScreenBase obj)
         {
             if (obj is MyGuiScreenMainMenuBase)
@@ -390,8 +375,7 @@ namespace CleanSpaceShared
             if (r.NonceS == null)
                 Common.Logger.Warning($"{Common.PluginName} r.NonceS was null.");
 
-            var pluginHashes = AssemblyScanner.GetPluginAssemblies()
-                ?.Select<Assembly, string>((a) =>{
+            var pluginHashes = AssemblyScanner.GetPluginAssemblies()?.Select<Assembly, string>((a) =>{
                     try
                     {
                         return AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.NonceS));
@@ -406,17 +390,13 @@ namespace CleanSpaceShared
                 .ToList();
 
             byte[] newSteamToken = new byte[1024];
-            if(!MyGameService.GetAuthSessionTicket(out var _, newSteamToken, out var length))
-            {
+            if(!MyGameService.GetAuthSessionTicket(out var _, newSteamToken, out var length)){
                 Common.Logger.Error($"{Common.PluginName} Couldn't get a new steam auth ticket...");
             }
 
             var message = new PluginValidationResponse
             {
-                SenderId = Sync.MyId,
                 TargetType = MessageTarget.Server,
-                Target = connectionSessionTarget,
-                UnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 NonceS = this.currentServerNonce,
                 NonceC = currentClientNonce,
                 PluginHashes = pluginHashes,
@@ -431,68 +411,36 @@ namespace CleanSpaceShared
             PacketRegistry.Logger.Info($"{PacketRegistry.PluginName}: Sent response to validation request.");
         }
 
-
-
-
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void ResetState()
+        {
+            this.connectionSessionSalt = null;
+            this.connectionChatterLenth = 0;
+            this.connectionSessionTarget = 0;
+            this.lastServerNonce = null;
+            this.acceptingChatter = true;
+            this.acceptingHello = true;
+        }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void RegisterPackets()
         {
-
-            PacketRegistry.Register<CleanSpaceHelloPacket>(
-               107,
-               () => new ProtoPacketData<CleanSpaceHelloPacket>()
-           );
-
-            PacketRegistry.Register<CleanSpaceChatterPacket>(
-             108,
-             () => new ProtoPacketData<CleanSpaceChatterPacket>(), SecretPacketFactory<CleanSpaceChatterPacket>.handler<ProtoPacketData<CleanSpaceChatterPacket>>
-           );
-
-            PacketRegistry.Register<PluginValidationRequest>(
-                110,                 
-                () => new ProtoPacketData<PluginValidationRequest>()
-            );
-
-            PacketRegistry.Register<PluginValidationResponse>(
-               111,
-               () => new ProtoPacketData<PluginValidationResponse>()
-            );
-
-            PacketRegistry.Register<PluginValidationResult>(
-              112,
-              () => new ProtoPacketData<PluginValidationResult>()
-            );
+            PacketRegistry.Register<CleanSpaceHelloPacket>(107, () => new ProtoPacketData<CleanSpaceHelloPacket>());
+            PacketRegistry.Register<CleanSpaceChatterPacket>(108, () => new ProtoPacketData<CleanSpaceChatterPacket>(), SecretPacketFactory<CleanSpaceChatterPacket>.handler<ProtoPacketData<CleanSpaceChatterPacket>>);
+            PacketRegistry.Register<PluginValidationRequest>(110, () => new ProtoPacketData<PluginValidationRequest>());
+            PacketRegistry.Register<PluginValidationResponse>(111, () => new ProtoPacketData<PluginValidationResponse>());
+            PacketRegistry.Register<PluginValidationResult>(112, () => new ProtoPacketData<PluginValidationResult>());
         }
 
         public void Dispose()
         {
-            try
-            {
-               
-            }
-            catch (Exception ex)
-            {
-                Log.Critical(ex, "Dispose failed");
-            }
-
             Instance = null;
         }
 
         public void Update()
-        {
-            if (failed)
-                return;
-
-            try
-            {           
-                Tick++;
-            }
-            catch (Exception ex)
-            {
-                Log.Critical(ex, "Update failed");
-                failed = true;
-            }
+        {      
+            // Skeleton Jelly
+            Tick++;
         }
 
     }

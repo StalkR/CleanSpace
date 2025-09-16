@@ -116,7 +116,10 @@ namespace CleanSpaceShared.Networking
         public static void Send<T>(T message, EndpointId recipient, string token, string extraKey = null, MyP2PMessageEnum reliability = MyP2PMessageEnum.Reliable)
            where T : MessageBase
         {
-            ushort id = GetPacketId<T>();           
+            ushort id = GetPacketId<T>();
+            message.UnixTimestamp = DateTime.UtcNow.ToUnixTimestamp();
+            message.SenderId = Sync.MyId;
+            message.Target = recipient.Value;
             var envelope = MessageFactory.Wrap(message, token, extraKey, message.should_compress, true);
             envelope.PacketId = id;
             var packet = new ProtoPacketData<T>(envelope);

@@ -1,6 +1,5 @@
 using ProtoBuf;
 using System.IO;
-
 public static class ProtoUtil
 {
     public static byte[] Serialize<T>(T instance)
