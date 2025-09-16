@@ -22,6 +22,7 @@ using CleanSpaceTorch.Tracker;
 using CleanSpaceTorch.Util;
 using VRage.GameServices;
 using VRage.Utils;
+using System.Reflection;
 
 namespace CleanSpace
 {
@@ -90,8 +91,7 @@ namespace CleanSpace
             }            
          
             cleanSpaceClientManager = new ClientSessionManager();
-
-         
+            
             Common.Logger.Info($"Torch directory is {AppDomain.CurrentDomain.BaseDirectory}");           
 
             assemblyManager = new CleanSpaceTorch.CleanSpaceAssemblyManager(AppDomain.CurrentDomain.BaseDirectory);
@@ -99,9 +99,7 @@ namespace CleanSpace
 
             ServerSessionParameterProviders.RegisterProviders();
             assemblyManager.Init_Events();
-            initialized = true;
-            
-            
+            initialized = true; 
         }
 
         private bool events_initialized = false;

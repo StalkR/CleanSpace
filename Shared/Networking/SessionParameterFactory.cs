@@ -205,7 +205,6 @@ public static class SessionParameterFactory
     {
         var numRequests = _rng.Next(2, 5);
         List<SessionParameterRequest> requests = new List<SessionParameterRequest>();
-        bool placed_LAC = false;
 
         Common.Logger.Debug($"{Common.PluginName} Starting with {numRequests} request slots, salt length={salt?.Length ?? 0}");
 

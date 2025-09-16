@@ -31,8 +31,8 @@ namespace CleanSpaceClient
         public static void RegisterProviders()
         {
 
-            SessionParameterFactory.RegisterProvider(RequestType.MethodIL, (args) =>
-            {
+            SessionParameterFactory.RegisterProvider(RequestType.MethodIL, (args) => {
+
                 MethodIdentifier m = ProtoUtil.Deserialize<MethodIdentifier>((byte[])args[0]);
                 // Find the assembly that contains the type
                 Type t = AppDomain.CurrentDomain
@@ -68,7 +68,7 @@ namespace CleanSpaceClient
                      return ILAttester.GetTypeIlBytes(t);
                  });*/
 
-            CleanSpaceShared.Plugin.Common.Logger.Info($"{CleanSpaceShared.Plugin.Common.Logger}: Validation providers registered.");
+            Common.Logger.Info($"{Common.Logger}: Validation providers registered.");
         }
     }
 
@@ -78,16 +78,14 @@ namespace CleanSpaceClient
         public const string PluginName = "Clean Space";
         public static CleanSpaceClientPlugin Instance { get; private set; }
         public long Tick { get; private set; }
-        private static bool failed;
-
         public IPluginLogger Log => Logger;
         public static readonly IPluginLogger Logger = new PluginLogger(PluginName);
-
         public IPluginConfig Config => config?.Data;
         private PersistentConfig<PluginConfig> config;
-        
-        private uint serverFacingAddress; 
-        public bool first_initialization = false;
+
+        private uint serverFacingAddress;
+        private bool first_initialization = false;
+
         private byte[] connectionSessionSalt;
         private byte connectionChatterLenth;
         private ulong connectionSessionTarget;
@@ -106,7 +104,7 @@ namespace CleanSpaceClient
         static CleanSpaceClientPlugin()
         {
             if (!IsInValidAppDomain())
-            {               
+            {
                 Common.Logger.Error($"{Common.PluginName}: Loaded outside valid app domain. Aborting...");
                 throw new InvalidOperationException($"{Common.PluginName} invalid app domain.");
             }
@@ -145,7 +143,7 @@ namespace CleanSpaceClient
                     .ToList();
 
                 if (duplicates.Count > 1)
-                {                   
+                {
                     return false;
                 }
             }
@@ -155,7 +153,7 @@ namespace CleanSpaceClient
 
             return false;
         }
-        public static bool Ensure() => true; 
+        public static bool Ensure() => true;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public void Init(object gameInstance)
@@ -172,8 +170,8 @@ namespace CleanSpaceClient
             {
                 TokenValidTimeSeconds = 2,
             });
-            Common.SetPlugin(this, gameVersion, null, "Clean Space", false, Logger, config.Data);         
-           
+            Common.SetPlugin(this, gameVersion, null, "Clean Space", false, Logger, config.Data);
+
             Log.Info($"{PluginName}: Initializing events.");
 
             EventHub.CleanSpaceHelloReceived += EventHub_CleanSpaceHelloReceived;
@@ -190,20 +188,22 @@ namespace CleanSpaceClient
         private void EventHub_CleanSpaceChatterReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
 
-            if (!acceptingChatter) {
-                    Common.Logger.Debug("Received chatter, but not accepting it. Probably an echo.");
-                return; 
+            if (!acceptingChatter)
+            {
+                Common.Logger.Debug("Received chatter, but not currently accepting it. Probably an echo.");
+                return;
             }
 
             object[] args = e.Args;
             try { MiscUtil.ArgsChecks<CleanSpaceChatterPacket>(e, 1, destVerify: Sync.MyId); }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling chatter from the server." + ex.Message);
                 return;
             }
 
             CleanSpaceChatterPacket r = (CleanSpaceChatterPacket)args[0];
-           
+
             if (this.connectionChatterLenth > 1)
             {
                 this.lastServerNonce = (string)this.currentServerNonce.Clone();
@@ -255,9 +255,12 @@ namespace CleanSpaceClient
         private void EventHub_CleanSpaceHelloReceived(object sender, CleanSpaceTargetedEventArgs e)
         {
             object[] args = e.Args;
-            try {   
-                MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, destVerify: Sync.MyId);   }
-            catch (Exception ex) {
+            try
+            {
+                MiscUtil.ArgsChecks<CleanSpaceHelloPacket>(e, 1, destVerify: Sync.MyId);
+            }
+            catch (Exception ex)
+            {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks ran into a problem handling a hello message from the server." + ex.Message);
                 return;
             }
@@ -276,7 +279,7 @@ namespace CleanSpaceClient
 
             this.lastClientNonce = String.Empty;
             this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
-            
+
             this.serverFacingAddress = r.client_ip_echo;
 
             Common.Logger.Debug("Received params: " + Convert.ToBase64String(parametersIn));
@@ -284,9 +287,10 @@ namespace CleanSpaceClient
                 SessionParameterFactory.AnswerChallenge(parametersIn, r.NonceS, this.connectionSessionSalt);
 
             Common.Logger.Debug("Generated params: " + Convert.ToBase64String(parametersOut));
-            var message = new CleanSpaceHelloPacket {
+            var message = new CleanSpaceHelloPacket
+            {
                 TargetType = MessageTarget.Server,
-                NonceS = this.currentServerNonce,          
+                NonceS = this.currentServerNonce,
                 NonceC = this.currentClientNonce,
                 sessionParameters = parametersOut
             };
@@ -311,19 +315,19 @@ namespace CleanSpaceClient
                 var MsgBody = new StringBuilder("Could not join the server.\n\n");
                 var Offenders = r.PluginList;
 
-                var offenderPluginInfo = AssemblyScanner.GetRawPluginAssembliesData().Where((element)=>Offenders.Contains(element.Hash, StringComparer.OrdinalIgnoreCase));
+                var offenderPluginInfo = AssemblyScanner.GetRawPluginAssembliesData().Where((element) => Offenders.Contains(element.Hash, StringComparer.OrdinalIgnoreCase));
 
-                if(r.Code == CleanSpaceShared.Struct.ValidationResultCode.REJECTED_CLEANSPACE_HASH)
+                if (r.Code == ValidationResultCode.REJECTED_CLEANSPACE_HASH)
                 {
                     MsgBody.AppendLine("Your version of Clean Space is not allowed by the server. Update your version of Clean Space or contact the server owner to identify the version being used if not latest.");
                 }
-                else if(r.Code == CleanSpaceShared.Struct.ValidationResultCode.REJECTED_MATCH)
+                else if (r.Code == ValidationResultCode.REJECTED_MATCH)
                 {
                     MsgBody.AppendLine("Some of your currently loaded plugins were disallowed by the server. Disable them before attempting to join. \n Plugins: \n");
                     offenderPluginInfo.ForEach((element) => MsgBody.AppendLine($"Plugin Name: {element.Name}"));
                     MsgBody.AppendLine("\n\nIf you feel that this is an error, contact a Clean Space developer with your logs.");
                 }
-                else if (r.Code == CleanSpaceShared.Struct.ValidationResultCode.EXPIRED_TOKEN)
+                else if (r.Code == ValidationResultCode.EXPIRED_TOKEN)
                 {
                     MsgBody.AppendLine("Clean Space rejected your connection due to an expired token. Perhaps network issues?");
                 }
@@ -347,18 +351,16 @@ namespace CleanSpaceClient
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void MyScreenManager_ScreenAdded(MyGuiScreenBase obj)
         {
-            if (obj is MyGuiScreenMainMenuBase)
-            {
+            if (obj is MyGuiScreenMainMenuBase) {
+
                 Log.Info($"{PluginName}: Menu screen reached. Re-registering handlers.");
                 PacketRegistry.InstallHandler();
-                if (!first_initialization)
-                {
-                    first_initialization = true;                   
+                if (!first_initialization) {
+                    first_initialization = true;
                     RegisterPackets();
                 }
 
-                if (hasPendingMessage)
-                {
+                if (hasPendingMessage) {
                     MyGuiSandbox.AddScreen(pendingMessageBox);
                     hasPendingMessage = false;
                 }
@@ -369,73 +371,70 @@ namespace CleanSpaceClient
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void EventHub_ServerCleanSpaceRequested(object sender, CleanSpaceTargetedEventArgs e)
-        {           
+        {
             object[] args = e.Args;
-            try
-            {
+            try {
                 MiscUtil.ArgsChecks<PluginValidationRequest>(e, 1);
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 Common.Logger.Error($"{Common.PluginName} ArgChecks failed handling a hello message from the server: {ex}");
                 return;
             }
 
             PluginValidationRequest r = args[0] as PluginValidationRequest;
 
-            if (r.attestationChallenge == null)
-            {
-                Common.Logger.Error($"{Common.PluginName} attestationChallenge was null.");
+            if (r.attestationSignature == null) {
+                var m = $"{Common.PluginName} attestationSignature was null.";
+                Common.Logger.Error(m);
+                throw new Exception(m);
                 return;
             }
+
+            this.lastServerNonce = currentServerNonce;
+            this.currentServerNonce = r.NonceS;
 
             PacketRegistry.Logger.Debug($"{PacketRegistry.PluginName}: Unpacking attestation (Challenge length: {r.attestationChallenge?.Length}).");
 
             byte[] IV = r.attestationChallenge.Range(r.attestationChallenge.Length - 16, r.attestationChallenge.Length).ToArray();
             byte[] attestationBytes = r.attestationChallenge.Range(0, r.attestationChallenge.Length - 16).ToArray();
-
-            this.lastServerNonce = currentServerNonce;
-            this.currentServerNonce = r.NonceS;
             byte[] decryptedHasherBytes = EncryptionUtil.DecryptBytes(attestationBytes, currentServerNonce, this.connectionSessionSalt, IV);
 
-            if (r.attestationSignature == null)
-            {
-                Common.Logger.Error($"{Common.PluginName} attestationSignature was null.");
-                return;
-            }
-
-            if (!TokenUtility.SignPayloadBytes(decryptedHasherBytes, this.connectionSessionSalt).SequenceEqual(r.attestationSignature))
-            {
+            if (!TokenUtility.SignPayloadBytes(decryptedHasherBytes, this.connectionSessionSalt).SequenceEqual(r.attestationSignature)){
                 var m = $"{Common.PluginName} Security violation in clean space request hasher. Signature does not match.";
                 Common.Logger.Error(m);
                 throw new Exception(m);
+                return;
             }
 
             HasherRunner.ValidateHasherRunnerBytes(decryptedHasherBytes);
-            
+
             this.lastClientNonce = this.currentClientNonce;
             this.currentClientNonce = ValidationManager.RegisterNonceForPlayer(r.SenderId, true);
 
             if (r.NonceS == null)
                 Common.Logger.Warning($"{Common.PluginName} r.NonceS was null.");
 
-            var pluginHashes = AssemblyScanner.GetPluginAssemblies()?.Select<Assembly, string>((a) =>{
-                    try
-                    {
-                        return AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.NonceS));
-                    }
-                    catch (Exception ex)
-                    {
-                        Common.Logger.Error($"{Common.PluginName} Failed to fingerprint assembly {a.FullName}: {ex}");
-                        return null;
-                    }
-                })
+            var pluginHashes = AssemblyScanner.GetPluginAssemblies()?.Select<Assembly, string>((a) =>
+            {
+                try
+                {
+                    return AssemblyScanner.GetSecureAssemblyFingerprint(a, Encoding.UTF8.GetBytes(r.NonceS));
+                }
+                catch (Exception ex)
+                {
+                    Common.Logger.Error($"{Common.PluginName} Failed to fingerprint assembly {a.FullName}: {ex}");
+                    return null;
+                }
+            })
                 .Where(h => h != null)
                 .ToList();
 
             byte[] newSteamToken = new byte[1024];
-            if(!MyGameService.GetAuthSessionTicket(out var _, newSteamToken, out var length)){
-                Common.Logger.Error($"{Common.PluginName} Couldn't get a new steam auth ticket...");
+            if (!MyGameService.GetAuthSessionTicket(out var _, newSteamToken, out var length))
+            {
+                var m = $"{Common.PluginName} Couldn't get a new auth ticket from steam. Try reconnecting.";
+                Common.Logger.Error(m);
+                throw new Exception(m);
+                return;
             }
 
             var message = new PluginValidationResponse
@@ -478,11 +477,12 @@ namespace CleanSpaceClient
 
         public void Dispose()
         {
-            Instance = null;
+            PacketRegistry.ClearHandlerOn(225);
+            Instance = null;            
         }
 
         public void Update()
-        {      
+        {
             // Skeleton Jelly
             Tick++;
         }

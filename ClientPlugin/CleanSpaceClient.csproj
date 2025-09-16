@@ -633,7 +633,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClientSessionParameterProviders.cs" />
     <Compile Include="CleanSpaceClientPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

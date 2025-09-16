@@ -15,8 +15,6 @@ namespace CleanSpaceShared.Plugin
         public static IPluginLogger Logger { get; private set; }
         public static IPluginConfig Config { get; private set; }
 
-        public static int JITTEST_RESPONSE_WINDOW_SIZE = 256;
-
         public static string GameVersion;
         public static string DataDir;
         public static string PluginName;
