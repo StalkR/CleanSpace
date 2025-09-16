@@ -253,9 +253,6 @@ namespace CleanSpaceClient
                 sessionParameters = parametersOut
             };
 
-            // ordinarily, we would send a message whose token is encrypted with last server nonce as the extra key, but we dont have one yet. Thats fine, if it is null,
-            // then the wrapper will use the per-message salt as the extra key. Both sides do not care about an expected nonce yet. Or shouldn't.
-
             PacketRegistry.Send(message, new EndpointId(connectionSessionTarget), this.currentClientNonce, this.currentServerNonce);
             Common.Logger.Info($"Replied to a hello from server {connectionSessionTarget}. Let's talk turn-key.");
         }
